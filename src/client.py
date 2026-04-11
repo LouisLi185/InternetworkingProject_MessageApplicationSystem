@@ -1,8 +1,13 @@
+"""
+This file is the client side of the message system.
+It shows the menus, gets user input, sends requests,
+and displays the replies from the server.
+"""
+
 import socket
 
 import config
 import protocol
-
 
 # Print important messages inside a simple text box.
 def print_box(lines):
@@ -22,11 +27,24 @@ def print_box(lines):
     print(border)
 
 
+# Read one full reply line from the server.
+def receive_reply(client_socket):
+    reply = ""
+
+    while "\n" not in reply:
+        data = client_socket.recv(config.BUFFER_SIZE)
+        if not data:
+            break
+
+        reply = reply + data.decode()
+
+    return reply.strip()
+
+
 # Send one request to the server and wait for one reply.
 def send_command(client_socket, command):
     client_socket.sendall((command + "\n").encode())
-    reply = client_socket.recv(config.BUFFER_SIZE).decode().strip()
-    return reply
+    return receive_reply(client_socket)
 
 
 # Keep asking for login until the server accepts it.
@@ -53,28 +71,42 @@ def show_login_screen(client_socket):
             print_box(["Login failed", "Invalid response from server"])
 
 
-# Set up the Friend module:view, add, delete
-def view_friend_list(client_socket, current_user_id):
+# Ask the server for the latest friend list of the current user.
+# This helper is used by both the friend module and message module.
+def get_friend_list_from_server(client_socket, current_user_id):
     request = protocol.build_view_friends_request(current_user_id)
     reply = send_command(client_socket, request)
     parts = protocol.parse_message(reply)
 
     if len(parts) >= 3 and parts[0] == "OK" and parts[1] == "VIEW_FRIENDS":
         if parts[2] == "NO_FRIENDS":
-            print_box(["Your friend list", "You do not have any friends yet."])
-        else:
-            friend_list = parts[2].split(",")
-            lines = ["Your friend list"]
-            for friend_id in friend_list:
-                lines.append(friend_id)
-            print_box(lines)
+            return [], ""
+        return parts[2].split(","), ""
     elif len(parts) >= 3:
-        print_box(["Error", parts[2]])
+        return None, parts[2]
     else:
-        print_box(["Error", "Invalid response from server"])
+        return None, "Invalid response from server"
+
+
+# Set up the Friend module:view, add, delete
+def view_friend_list(client_socket, current_user_id):
+    friend_list, error_message = get_friend_list_from_server(
+        client_socket, current_user_id
+    )
+
+    if friend_list is None:
+        print_box(["Error", error_message])
+    elif len(friend_list) == 0:
+        print_box(["Your friend list", "You do not have any friends yet."])
+    else:
+        lines = ["Your friend list"]
+        for friend_id in friend_list:
+            lines.append(friend_id)
+        print_box(lines)
 
 
 def add_new_friend(client_socket, current_user_id):
+    # This function sends the ADD_FRIEND protocol request.
     print_box("Add a new friend")
     friend_id = input("Enter friend user ID: ").strip()
 
@@ -89,6 +121,7 @@ def add_new_friend(client_socket, current_user_id):
 
 
 def delete_friend(client_socket, current_user_id):
+    # This function sends the DELETE_FRIEND protocol request.
     print_box("Delete your friend")
     friend_id = input("Enter friend user ID: ").strip()
 
@@ -126,6 +159,97 @@ def show_friend_management_menu(client_socket, current_user_id):
             print_box(["Error", "Invalid choice. Please try again."])
 
 
+# Let the user choose one or more friends as message receivers.
+# Only friends of the current user can be selected here.
+def choose_message_receivers(client_socket, current_user_id):
+    friend_list, error_message = get_friend_list_from_server(
+        client_socket, current_user_id
+    )
+
+    if friend_list is None:
+        print_box(["Error", error_message])
+        return []
+    if len(friend_list) == 0:
+        print_box(["Send message", "You do not have any friends yet."])
+        return []
+
+    lines = ["Send message to your friend(s)", "Your friends"]
+    for friend_id in friend_list:
+        lines.append(friend_id)
+    print_box(lines)
+    print("Enter friend IDs one by one.")
+    print("Type x when you finish.\n")
+
+    selected_receivers = []
+
+    while True:
+        friend_id = input("Friend user ID (x to finish): ").strip().lower()
+
+        if friend_id == "x":
+            break
+        elif friend_id == "":
+            print_box(["Error", "Friend user ID cannot be empty."])
+        elif friend_id == current_user_id:
+            print_box(["Error", "You cannot send a message to yourself."])
+        elif friend_id not in friend_list:
+            print_box(["Error", "You can only send messages to your friends."])
+        elif friend_id in selected_receivers:
+            print_box(["Error", "This friend is already selected."])
+        else:
+            selected_receivers.append(friend_id)
+            print_box(["Recipient added", friend_id])
+
+    return selected_receivers
+
+
+# Let the user type a single-line or multi-line message.
+# Two blank lines in a row mean the message input is finished.
+def input_message_content():
+    print_box(["Type your message", "Press Enter twice to finish"])
+
+    lines = []
+    blank_line_count = 0
+
+    while True:
+        line = input()
+        lines.append(line)
+
+        if line == "":
+            blank_line_count = blank_line_count + 1
+        else:
+            blank_line_count = 0
+
+        if blank_line_count == 2:
+            break
+
+    while len(lines) > 0 and lines[-1] == "":
+        lines.pop()
+
+    return "\n".join(lines).strip()
+
+
+# Build and send the SEND_MESSAGE request to the server.
+# The server will check the receivers again before saving the message.
+def send_message_to_friends(client_socket, current_user_id):
+    selected_receivers = choose_message_receivers(client_socket, current_user_id)
+
+    if len(selected_receivers) == 0:
+        print_box(["Send message", "No valid recipient selected"])
+        return
+
+    message_content = input_message_content()
+    request = protocol.build_send_message_request(
+        current_user_id, selected_receivers, message_content
+    )
+    reply = send_command(client_socket, request)
+    parts = protocol.parse_message(reply)
+
+    if len(parts) >= 3 and parts[1] == "SEND_MESSAGE":
+        print_box(parts[2])
+    else:
+        print_box(["Error", "Invalid response from server"])
+
+
 # Show the main menu after login.
 def show_main_menu(client_socket, current_user_id):
     while True:
@@ -144,7 +268,7 @@ def show_main_menu(client_socket, current_user_id):
             show_friend_management_menu(client_socket, current_user_id)
 
         elif choice == "2":
-            print("This function is not implemented yet.\n")
+            send_message_to_friends(client_socket, current_user_id)
 
         elif choice == "3":
             print("This function is not implemented yet.\n")
@@ -178,10 +302,12 @@ def main():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
+        # Connect to the server first, then wait for the welcome line.
         client_socket.connect((config.HOST, config.PORT))
-        client_socket.recv(config.BUFFER_SIZE).decode().strip()
+        receive_reply(client_socket)
 
         while True:
+            # After logout, the program will show the login screen again.
             current_user_id = show_login_screen(client_socket)
             should_continue = show_main_menu(client_socket, current_user_id)
             if not should_continue:

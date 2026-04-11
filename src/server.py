@@ -1,3 +1,9 @@
+"""
+This file is the server side of the message system.
+It receives requests from clients, checks them,
+updates the JSON data, and sends replies back.
+"""
+
 import socket
 import threading
 
@@ -5,9 +11,46 @@ import config
 import protocol
 import storage
 
-
 users = {}
 server_data = {}
+
+# Read one full request line from the client.
+def receive_request(client_socket):
+    message = ""
+
+    while "\n" not in message:
+        data = client_socket.recv(config.BUFFER_SIZE)
+        if not data:
+            break
+
+        message = message + data.decode()
+
+    return message.strip()
+
+
+# Check whether all message receivers are valid.
+# The sender can only send messages to people in the friend list.
+def check_message_receivers(sender, recipient_list):
+    checked_list = []
+
+    for recipient in recipient_list:
+        recipient = recipient.strip().lower()
+
+        if recipient == "":
+            continue
+        if recipient == sender:
+            return [], "You cannot send a message to yourself"
+        if recipient in checked_list:
+            continue
+        if not storage.is_friend(server_data, sender, recipient):
+            return [], "You can only send messages to your friends"
+
+        checked_list.append(recipient)
+
+    if len(checked_list) == 0:
+        return [], "No valid recipient selected"
+
+    return checked_list, ""
 
 
 # Handle one connected client.
@@ -21,16 +64,17 @@ def handle_client(client_socket, client_address):
 
         # Keep reading requests until the client disconnects.
         while True:
-            data = client_socket.recv(config.BUFFER_SIZE)
-            if not data:
+            message = receive_request(client_socket)
+            if message == "":
                 break
 
-            message = data.decode().strip()
             print("Received from", client_address, ":", message)
 
             parts = protocol.parse_message(message)
             command = parts[0]
 
+            # LOGIN protocol:
+            # LOGIN|user_id|password
             if command == "LOGIN":
                 if len(parts) != 3:
                     reply = protocol.build_error_response("LOGIN", "Wrong login format")
@@ -48,6 +92,8 @@ def handle_client(client_socket, client_address):
                             "LOGIN", "Invalid user ID or password"
                         )
 
+            # VIEW_FRIENDS protocol:
+            # VIEW_FRIENDS|user_id
             elif command == "VIEW_FRIENDS":
                 if current_user == "":
                     reply = protocol.build_error_response(
@@ -73,6 +119,8 @@ def handle_client(client_socket, client_address):
                             "VIEW_FRIENDS", ",".join(friend_list)
                         )
 
+            # ADD_FRIEND protocol:
+            # ADD_FRIEND|user_id|friend_id
             elif command == "ADD_FRIEND":
                 if current_user == "":
                     reply = protocol.build_error_response(
@@ -107,6 +155,8 @@ def handle_client(client_socket, client_address):
                             "ADD_FRIEND", "Friend added successfully"
                         )
 
+            # DELETE_FRIEND protocol:
+            # DELETE_FRIEND|user_id|friend_id
             elif command == "DELETE_FRIEND":
                 if current_user == "":
                     reply = protocol.build_error_response(
@@ -135,6 +185,54 @@ def handle_client(client_socket, client_address):
                             "DELETE_FRIEND", "Friend deleted successfully"
                         )
 
+            # SEND_MESSAGE protocol:
+            # SEND_MESSAGE|sender|friend1,friend2|message_content
+            # The message content may contain escaped special characters.
+            elif command == "SEND_MESSAGE":
+                if current_user == "":
+                    reply = protocol.build_error_response(
+                        "SEND_MESSAGE", "Please login first"
+                    )
+                else:
+                    request_data = protocol.parse_send_message_request(message)
+
+                    if request_data is None:
+                        reply = protocol.build_error_response(
+                            "SEND_MESSAGE", "Wrong send message format"
+                        )
+                    else:
+                        sender = request_data[0]
+                        recipient_list = request_data[1]
+                        message_content = request_data[2]
+
+                        if sender != current_user:
+                            reply = protocol.build_error_response(
+                                "SEND_MESSAGE", "Wrong user"
+                            )
+                        else:
+                            checked_list, error_message = check_message_receivers(
+                                sender, recipient_list
+                            )
+
+                            if error_message != "":
+                                reply = protocol.build_error_response(
+                                    "SEND_MESSAGE", error_message
+                                )
+                            elif message_content.strip() == "":
+                                reply = protocol.build_error_response(
+                                    "SEND_MESSAGE", "Message cannot be empty"
+                                )
+                            else:
+                                storage.save_message(
+                                    server_data, sender, checked_list, message_content
+                                )
+                                storage.save_server_data(server_data)
+                                reply = protocol.build_success_response(
+                                    "SEND_MESSAGE", "Message sent successfully"
+                                )
+
+            # LOGOUT protocol:
+            # LOGOUT
             elif command == "LOGOUT":
                 if current_user == "":
                     reply = protocol.build_error_response(
@@ -146,6 +244,7 @@ def handle_client(client_socket, client_address):
                     )
                     current_user = ""
 
+            # Any unknown command will return an error reply.
             else:
                 reply = protocol.build_error_response(
                     "UNKNOWN", "This function is not implemented yet"
@@ -165,6 +264,7 @@ def main():
     global users
     global server_data
 
+    # Load user accounts and saved server data before starting the socket.
     users = storage.load_default_users()
     server_data = storage.load_server_data()
     server_data = storage.prepare_server_data(server_data, users)

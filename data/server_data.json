@@ -17,6 +17,37 @@
         "tom": [],
         "jane": []
     },
-    "messages": {},
-    "files": {}
+    "messages": {
+        "jimmy": [],
+        "mary": [
+            {
+                "type": "message",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary"
+                ],
+                "content": "hello, my name is jimmy"
+            }
+        ],
+        "peter": [],
+        "david": [],
+        "john": [],
+        "george": [],
+        "alice": [],
+        "bob": [],
+        "tom": [],
+        "jane": []
+    },
+    "files": {
+        "jimmy": [],
+        "mary": [],
+        "peter": [],
+        "david": [],
+        "john": [],
+        "george": [],
+        "alice": [],
+        "bob": [],
+        "tom": [],
+        "jane": []
+    }
 }
