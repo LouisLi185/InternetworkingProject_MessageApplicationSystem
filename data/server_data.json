@@ -1,5 +1,22 @@
 {
-    "friends": {},
+    "friends": {
+        "jimmy": [
+            "mary",
+            "peter"
+        ],
+        "mary": [
+            "peter",
+            "david"
+        ],
+        "peter": [],
+        "david": [],
+        "john": [],
+        "george": [],
+        "alice": [],
+        "bob": [],
+        "tom": [],
+        "jane": []
+    },
     "messages": {},
     "files": {}
 }
