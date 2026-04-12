@@ -1,15 +1,7 @@
 {
     "friends": {
-        "jimmy": [
-            "mary",
-            "peter",
-            "bob"
-        ],
-        "mary": [
-            "peter",
-            "david",
-            "bob"
-        ],
+        "jimmy": [],
+        "mary": [],
         "peter": [],
         "david": [],
         "john": [],
@@ -20,230 +12,26 @@
         "jane": []
     },
     "messages": {
-        "jimmy": [
-            {
-                "type": "acknowledgement",
-                "sender": "mary",
-                "related_type": "message",
-                "content": "Message has been read."
-            },
-            {
-                "type": "acknowledgement",
-                "sender": "mary",
-                "related_type": "file",
-                "content": "File has been read.",
-                "file_name": "sample1.txt"
-            }
-        ],
-        "mary": [
-            {
-                "type": "message",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary"
-                ],
-                "content": "hello, my name is jimmy",
-                "ack_sent": true
-            },
-            {
-                "type": "message",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary",
-                    "peter"
-                ],
-                "content": "i love you all"
-            },
-            {
-                "type": "broadcast",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary",
-                    "peter",
-                    "bob"
-                ],
-                "content": "hello everyone\ni am coming for you"
-            },
-            {
-                "type": "broadcast",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary",
-                    "peter",
-                    "bob"
-                ],
-                "content": "i love u all"
-            }
-        ],
-        "peter": [
-            {
-                "type": "message",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary",
-                    "peter"
-                ],
-                "content": "i love you all"
-            },
-            {
-                "type": "broadcast",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary",
-                    "peter",
-                    "bob"
-                ],
-                "content": "hello everyone\ni am coming for you"
-            },
-            {
-                "type": "broadcast",
-                "sender": "mary",
-                "recipients": [
-                    "peter",
-                    "david",
-                    "bob"
-                ],
-                "content": "dllm"
-            },
-            {
-                "type": "broadcast",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary",
-                    "peter",
-                    "bob"
-                ],
-                "content": "i love u all"
-            }
-        ],
-        "david": [
-            {
-                "type": "broadcast",
-                "sender": "mary",
-                "recipients": [
-                    "peter",
-                    "david",
-                    "bob"
-                ],
-                "content": "dllm"
-            }
-        ],
+        "jimmy": [],
+        "mary": [],
+        "peter": [],
+        "david": [],
         "john": [],
         "george": [],
         "alice": [],
-        "bob": [
-            {
-                "type": "broadcast",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary",
-                    "peter",
-                    "bob"
-                ],
-                "content": "hello everyone\ni am coming for you"
-            },
-            {
-                "type": "broadcast",
-                "sender": "mary",
-                "recipients": [
-                    "peter",
-                    "david",
-                    "bob"
-                ],
-                "content": "dllm"
-            },
-            {
-                "type": "broadcast",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary",
-                    "peter",
-                    "bob"
-                ],
-                "content": "i love u all"
-            }
-        ],
+        "bob": [],
         "tom": [],
         "jane": []
     },
     "files": {
         "jimmy": [],
-        "mary": [
-            {
-                "type": "file",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary"
-                ],
-                "file_name": "test_files/sample_message_1.txt",
-                "content": "Hello Mary, this is a simple test message.\n"
-            },
-            {
-                "type": "file",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary"
-                ],
-                "file_name": "sample_message_1.txt",
-                "content": "Hello Mary, this is a simple test message.\n"
-            },
-            {
-                "type": "file",
-                "sender": "jimmy",
-                "recipients": [
-                    "mary"
-                ],
-                "file_name": "sample1.txt",
-                "content": "Hello Mary, this is a simple test message.\n",
-                "ack_sent": true
-            }
-        ],
-        "peter": [
-            {
-                "type": "file",
-                "sender": "jimmy",
-                "recipients": [
-                    "peter",
-                    "bob"
-                ],
-                "file_name": "test_files/sample_message_1.txt",
-                "content": "Hello Mary, this is a simple test message.\n"
-            },
-            {
-                "type": "file",
-                "sender": "mary",
-                "recipients": [
-                    "peter"
-                ],
-                "file_name": "sample1.txt",
-                "content": "Hello Mary, this is a simple test message.\n"
-            }
-        ],
+        "mary": [],
+        "peter": [],
         "david": [],
         "john": [],
         "george": [],
         "alice": [],
-        "bob": [
-            {
-                "type": "file",
-                "sender": "jimmy",
-                "recipients": [
-                    "peter",
-                    "bob"
-                ],
-                "file_name": "test_files/sample_message_1.txt",
-                "content": "Hello Mary, this is a simple test message.\n"
-            },
-            {
-                "type": "file",
-                "sender": "jimmy",
-                "recipients": [
-                    "bob"
-                ],
-                "file_name": "sample_message_2.txt",
-                "content": "Hello Peter,\nI am testing the file sending function.\nPlease check whether all lines are shown correctly.\n"
-            }
-        ],
+        "bob": [],
         "tom": [],
         "jane": []
     }
