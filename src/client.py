@@ -310,7 +310,7 @@ def read_text_file_content():
             print_box(["Send file", "Only text files are allowed"])
             continue
 
-        file_path = os.path.join(config.BASE_DIR, "test_files", file_name)
+        file_path = os.path.join(config.BASE_DIR, "text_files", file_name)
 
         if not os.path.isfile(file_path):
             second_file_path = os.path.join(config.BASE_DIR, file_name)
