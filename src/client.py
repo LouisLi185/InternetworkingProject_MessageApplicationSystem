@@ -4,6 +4,7 @@ It shows the menus, gets user input, sends requests,
 and displays the replies from the server.
 """
 
+import os
 import socket
 
 import config
@@ -250,6 +251,117 @@ def send_message_to_friends(client_socket, current_user_id):
         print_box(["Error", "Invalid response from server"])
 
 
+# Let the user choose one or more friends as file receivers.
+# Only friends of the current user can be selected here.
+def choose_file_receivers(client_socket, current_user_id):
+    friend_list, error_message = get_friend_list_from_server(
+        client_socket, current_user_id
+    )
+
+    if friend_list is None:
+        print_box(["Error", error_message])
+        return []
+    if len(friend_list) == 0:
+        print_box(["Send file", "You do not have any friends yet."])
+        return []
+
+    lines = ["Send file to your friend(s)", "Your friends"]
+    for friend_id in friend_list:
+        lines.append(friend_id)
+    print_box(lines)
+    print("Enter friend IDs one by one.")
+    print("Type x when you finish.\n")
+
+    selected_receivers = []
+
+    while True:
+        friend_id = input("Friend user ID (x to finish): ").strip().lower()
+
+        if friend_id == "x":
+            break
+        elif friend_id == "":
+            print_box(["Error", "Friend user ID cannot be empty."])
+        elif friend_id == current_user_id:
+            print_box(["Error", "You cannot send a file to yourself."])
+        elif friend_id not in friend_list:
+            print_box(["Error", "You can only send files to your friends."])
+        elif friend_id in selected_receivers:
+            print_box(["Error", "This friend is already selected."])
+        else:
+            selected_receivers.append(friend_id)
+            print_box(["Recipient added", friend_id])
+
+    return selected_receivers
+
+
+# Ask the user for a text file name, then read the file content.
+# The user can enter the file name directly.
+def read_text_file_content():
+    while True:
+        print_box(["Send a text file", "Enter r to return to main menu"])
+        file_name = input("Enter text file name: ").strip()
+
+        if file_name.lower() == "r":
+            return None, None, "RETURN"
+        if file_name == "":
+            print_box(["Send file", "File name cannot be empty"])
+            continue
+        if not file_name.lower().endswith(".txt"):
+            print_box(["Send file", "Only text files are allowed"])
+            continue
+
+        file_path = os.path.join(config.BASE_DIR, "test_files", file_name)
+
+        if not os.path.isfile(file_path):
+            second_file_path = os.path.join(config.BASE_DIR, file_name)
+
+            if os.path.isfile(second_file_path):
+                file_path = second_file_path
+            else:
+                print_box(["Send file", "File does not exist"])
+                continue
+
+        try:
+            file = open(file_path, "r")
+            file_content = file.read()
+            file.close()
+        except:
+            print_box(["Send file", "Cannot read file"])
+            continue
+
+        if file_content.strip() == "":
+            print_box(["Send file", "File content cannot be empty"])
+            continue
+
+        return os.path.basename(file_path), file_content, ""
+
+
+# Build and send the SEND_FILE request to the server.
+# The server will check the receivers again before saving the file.
+def send_file_to_friends(client_socket, current_user_id):
+    selected_receivers = choose_file_receivers(client_socket, current_user_id)
+
+    if len(selected_receivers) == 0:
+        print_box(["Send file", "No valid recipient selected"])
+        return
+
+    file_name, file_content, error_message = read_text_file_content()
+
+    if error_message == "RETURN":
+        return
+
+    request = protocol.build_send_file_request(
+        current_user_id, selected_receivers, file_name, file_content
+    )
+    reply = send_command(client_socket, request)
+    parts = protocol.parse_message(reply)
+
+    if len(parts) >= 3 and parts[1] == "SEND_FILE":
+        print_box(parts[2])
+    else:
+        print_box(["Error", "Invalid response from server"])
+
+
 # Send one message to all friends in the current user's friend list.
 # This uses the same multi-line message input as the normal message module.
 def broadcast_message_to_all_friends(client_socket, current_user_id):
@@ -304,7 +416,7 @@ def show_main_menu(client_socket, current_user_id):
             broadcast_message_to_all_friends(client_socket, current_user_id)
 
         elif choice == "4":
-            print("This function is not implemented yet.\n")
+            send_file_to_friends(client_socket, current_user_id)
 
         elif choice == "5":
             print("This function is not implemented yet.\n")

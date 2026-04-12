@@ -142,3 +142,29 @@ def save_broadcast_message(data, sender, message_content):
             "content": message_content
         }
         message_box.append(new_message)
+
+
+# Get the file box of one user.
+# Each user has a simple list of saved files.
+def get_file_box(data, user_id):
+    if "files" not in data:
+        data["files"] = {}
+
+    if user_id not in data["files"]:
+        data["files"][user_id] = []
+
+    return data["files"][user_id]
+
+
+# Save the same file into each selected receiver's file box.
+def save_file(data, sender, recipient_list, file_name, file_content):
+    for recipient in recipient_list:
+        file_box = get_file_box(data, recipient)
+        new_file = {
+            "type": "file",
+            "sender": sender,
+            "recipients": recipient_list[:],
+            "file_name": file_name,
+            "content": file_content
+        }
+        file_box.append(new_file)

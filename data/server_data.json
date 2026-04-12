@@ -48,6 +48,16 @@
                     "bob"
                 ],
                 "content": "hello everyone\ni am coming for you"
+            },
+            {
+                "type": "broadcast",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary",
+                    "peter",
+                    "bob"
+                ],
+                "content": "i love u all"
             }
         ],
         "peter": [
@@ -79,6 +89,16 @@
                     "bob"
                 ],
                 "content": "dllm"
+            },
+            {
+                "type": "broadcast",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary",
+                    "peter",
+                    "bob"
+                ],
+                "content": "i love u all"
             }
         ],
         "david": [
@@ -116,6 +136,16 @@
                     "bob"
                 ],
                 "content": "dllm"
+            },
+            {
+                "type": "broadcast",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary",
+                    "peter",
+                    "bob"
+                ],
+                "content": "i love u all"
             }
         ],
         "tom": [],
@@ -123,13 +153,72 @@
     },
     "files": {
         "jimmy": [],
-        "mary": [],
-        "peter": [],
+        "mary": [
+            {
+                "type": "file",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary"
+                ],
+                "file_name": "test_files/sample_message_1.txt",
+                "content": "Hello Mary, this is a simple test message.\n"
+            },
+            {
+                "type": "file",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary"
+                ],
+                "file_name": "sample_message_1.txt",
+                "content": "Hello Mary, this is a simple test message.\n"
+            }
+        ],
+        "peter": [
+            {
+                "type": "file",
+                "sender": "jimmy",
+                "recipients": [
+                    "peter",
+                    "bob"
+                ],
+                "file_name": "test_files/sample_message_1.txt",
+                "content": "Hello Mary, this is a simple test message.\n"
+            },
+            {
+                "type": "file",
+                "sender": "mary",
+                "recipients": [
+                    "peter"
+                ],
+                "file_name": "sample1.txt",
+                "content": "Hello Mary, this is a simple test message.\n"
+            }
+        ],
         "david": [],
         "john": [],
         "george": [],
         "alice": [],
-        "bob": [],
+        "bob": [
+            {
+                "type": "file",
+                "sender": "jimmy",
+                "recipients": [
+                    "peter",
+                    "bob"
+                ],
+                "file_name": "test_files/sample_message_1.txt",
+                "content": "Hello Mary, this is a simple test message.\n"
+            },
+            {
+                "type": "file",
+                "sender": "jimmy",
+                "recipients": [
+                    "bob"
+                ],
+                "file_name": "sample_message_2.txt",
+                "content": "Hello Peter,\nI am testing the file sending function.\nPlease check whether all lines are shown correctly.\n"
+            }
+        ],
         "tom": [],
         "jane": []
     }

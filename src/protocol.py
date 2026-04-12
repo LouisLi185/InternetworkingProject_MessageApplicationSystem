@@ -112,6 +112,45 @@ def parse_broadcast_request(message):
     return user_id, message_content
 
 
+"""---- File Sending Protocol ----"""
+# SEND_FILE request:
+# SEND_FILE|sender|friend1,friend2|file_name|file_content
+def build_send_file_request(user_id, recipient_list, file_name, file_content):
+    recipients_text = ",".join(recipient_list)
+    safe_file_name = change_special_text(file_name)
+    safe_file_content = change_special_text(file_content)
+    return (
+        "SEND_FILE|"
+        + user_id
+        + "|"
+        + recipients_text
+        + "|"
+        + safe_file_name
+        + "|"
+        + safe_file_content
+    )
+
+
+# Parse the SEND_FILE request in a simple way.
+# split("|", 4) keeps the file content as one whole part.
+def parse_send_file_request(message):
+    parts = message.strip().split("|", 4)
+
+    if len(parts) != 5 or parts[0] != "SEND_FILE":
+        return None
+
+    user_id = parts[1]
+
+    if parts[2] == "":
+        recipient_list = []
+    else:
+        recipient_list = parts[2].split(",")
+
+    file_name = restore_special_text(parts[3])
+    file_content = restore_special_text(parts[4])
+    return user_id, recipient_list, file_name, file_content
+
+
 """---- Server Response Protocol ----"""
 # Standard success reply:
 # OK|COMMAND|message

@@ -1,0 +1,5 @@
+This is a longer sample text file for our messaging project.
+It has several lines so we can test reading file content.
+The message should stay clear after it is sent.
+Each line is short and easy to check.
+This file is useful for a full text file sending demo.

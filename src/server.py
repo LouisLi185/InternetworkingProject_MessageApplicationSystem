@@ -53,6 +53,31 @@ def check_message_receivers(sender, recipient_list):
     return checked_list, ""
 
 
+# Check whether all file receivers are valid.
+# The sender can only send files to people in the friend list.
+def check_file_receivers(sender, recipient_list):
+    checked_list = []
+
+    for recipient in recipient_list:
+        recipient = recipient.strip().lower()
+
+        if recipient == "":
+            continue
+        if recipient == sender:
+            return [], "You cannot send a file to yourself"
+        if recipient in checked_list:
+            continue
+        if not storage.is_friend(server_data, sender, recipient):
+            return [], "You can only send files to your friends"
+
+        checked_list.append(recipient)
+
+    if len(checked_list) == 0:
+        return [], "No valid recipient selected"
+
+    return checked_list, ""
+
+
 # Check whether the sender has friends for broadcast.
 def get_broadcast_receivers(sender):
     friend_list = storage.get_friend_list(server_data, sender)
@@ -61,6 +86,11 @@ def get_broadcast_receivers(sender):
         return [], "You do not have any friends to broadcast to"
 
     return friend_list[:], ""
+
+
+# Check whether the file name is a text file name.
+def is_text_file_name(file_name):
+    return file_name.lower().endswith(".txt")
 
 
 # Handle one connected client.
@@ -283,6 +313,60 @@ def handle_client(client_socket, client_address):
                                 storage.save_server_data(server_data)
                                 reply = protocol.build_success_response(
                                     "BROADCAST", "Broadcast sent successfully"
+                                )
+
+            # SEND_FILE protocol:
+            # SEND_FILE|sender|friend1,friend2|file_name|file_content
+            elif command == "SEND_FILE":
+                if current_user == "":
+                    reply = protocol.build_error_response(
+                        "SEND_FILE", "Please login first"
+                    )
+                else:
+                    request_data = protocol.parse_send_file_request(message)
+
+                    if request_data is None:
+                        reply = protocol.build_error_response(
+                            "SEND_FILE", "Wrong send file format"
+                        )
+                    else:
+                        sender = request_data[0]
+                        recipient_list = request_data[1]
+                        file_name = request_data[2]
+                        file_content = request_data[3]
+
+                        if sender != current_user:
+                            reply = protocol.build_error_response(
+                                "SEND_FILE", "Wrong user"
+                            )
+                        else:
+                            checked_list, error_message = check_file_receivers(
+                                sender, recipient_list
+                            )
+
+                            if error_message != "":
+                                reply = protocol.build_error_response(
+                                    "SEND_FILE", error_message
+                                )
+                            elif not is_text_file_name(file_name):
+                                reply = protocol.build_error_response(
+                                    "SEND_FILE", "Only text files are allowed"
+                                )
+                            elif file_content.strip() == "":
+                                reply = protocol.build_error_response(
+                                    "SEND_FILE", "File content cannot be empty"
+                                )
+                            else:
+                                storage.save_file(
+                                    server_data,
+                                    sender,
+                                    checked_list,
+                                    file_name,
+                                    file_content
+                                )
+                                storage.save_server_data(server_data)
+                                reply = protocol.build_success_response(
+                                    "SEND_FILE", "File sent successfully"
                                 )
 
             # LOGOUT protocol:
