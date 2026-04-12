@@ -93,6 +93,19 @@ def is_text_file_name(file_name):
     return file_name.lower().endswith(".txt")
 
 
+# Change the user input number into a simple 0-based inbox index.
+def get_inbox_index(number_text):
+    try:
+        item_number = int(number_text)
+    except:
+        return None
+
+    if item_number <= 0:
+        return None
+
+    return item_number - 1
+
+
 # Handle one connected client.
 def handle_client(client_socket, client_address):
     print("Client connected:", client_address)
@@ -368,6 +381,111 @@ def handle_client(client_socket, client_address):
                                 reply = protocol.build_success_response(
                                     "SEND_FILE", "File sent successfully"
                                 )
+
+            # LIST_INBOX protocol:
+            # LIST_INBOX|user_id
+            elif command == "LIST_INBOX":
+                if current_user == "":
+                    reply = protocol.build_error_response(
+                        "LIST_INBOX", "Please login first"
+                    )
+                elif len(parts) != 2:
+                    reply = protocol.build_error_response(
+                        "LIST_INBOX", "Wrong list inbox format"
+                    )
+                elif parts[1] != current_user:
+                    reply = protocol.build_error_response(
+                        "LIST_INBOX", "Wrong user"
+                    )
+                else:
+                    summary_list = storage.get_inbox_summary_list(
+                        server_data, current_user
+                    )
+
+                    if len(summary_list) == 0:
+                        reply = protocol.build_success_response(
+                            "LIST_INBOX", "NO_ITEMS"
+                        )
+                    else:
+                        reply = protocol.build_list_inbox_response(summary_list)
+
+            # READ_ITEM protocol:
+            # READ_ITEM|user_id|item_number
+            elif command == "READ_ITEM":
+                if current_user == "":
+                    reply = protocol.build_error_response(
+                        "READ_ITEM", "Please login first"
+                    )
+                elif len(parts) != 3:
+                    reply = protocol.build_error_response(
+                        "READ_ITEM", "Wrong read item format"
+                    )
+                elif parts[1] != current_user:
+                    reply = protocol.build_error_response(
+                        "READ_ITEM", "Wrong user"
+                    )
+                else:
+                    item_index = get_inbox_index(parts[2])
+
+                    if item_index is None:
+                        reply = protocol.build_error_response(
+                            "READ_ITEM", "Invalid inbox selection"
+                        )
+                    else:
+                        entry = storage.get_inbox_entry(
+                            server_data, current_user, item_index
+                        )
+
+                        if entry is None:
+                            reply = protocol.build_error_response(
+                                "READ_ITEM", "Invalid inbox selection"
+                            )
+                        else:
+                            acknowledgement_sent = storage.send_read_acknowledgement(
+                                server_data, current_user, entry
+                            )
+
+                            if acknowledgement_sent:
+                                storage.save_server_data(server_data)
+
+                            reply = protocol.build_read_item_response(entry["item"])
+
+            # DELETE_ITEM protocol:
+            # DELETE_ITEM|user_id|item_number
+            elif command == "DELETE_ITEM":
+                if current_user == "":
+                    reply = protocol.build_error_response(
+                        "DELETE_ITEM", "Please login first"
+                    )
+                elif len(parts) != 3:
+                    reply = protocol.build_error_response(
+                        "DELETE_ITEM", "Wrong delete item format"
+                    )
+                elif parts[1] != current_user:
+                    reply = protocol.build_error_response(
+                        "DELETE_ITEM", "Wrong user"
+                    )
+                else:
+                    item_index = get_inbox_index(parts[2])
+
+                    if item_index is None:
+                        reply = protocol.build_error_response(
+                            "DELETE_ITEM", "Invalid inbox selection"
+                        )
+                    else:
+                        delete_ok = storage.delete_inbox_item(
+                            server_data, current_user, item_index
+                        )
+
+                        if not delete_ok:
+                            reply = protocol.build_error_response(
+                                "DELETE_ITEM", "Invalid inbox selection"
+                            )
+                        else:
+                            storage.save_server_data(server_data)
+                            reply = protocol.build_success_response(
+                                "DELETE_ITEM", "Item deleted successfully"
+                            )
 
             # LOGOUT protocol:
             # LOGOUT

@@ -151,6 +151,97 @@ def parse_send_file_request(message):
     return user_id, recipient_list, file_name, file_content
 
 
+"""---- Inbox Protocol ----"""
+# LIST_INBOX request:
+# LIST_INBOX|user_id
+def build_list_inbox_request(user_id):
+    return "LIST_INBOX|" + user_id
+
+
+# READ_ITEM request:
+# READ_ITEM|user_id|item_number
+def build_read_item_request(user_id, item_number):
+    return "READ_ITEM|" + user_id + "|" + str(item_number)
+
+
+# DELETE_ITEM request:
+# DELETE_ITEM|user_id|item_number
+def build_delete_item_request(user_id, item_number):
+    return "DELETE_ITEM|" + user_id + "|" + str(item_number)
+
+
+# LIST_INBOX success reply:
+# OK|LIST_INBOX|item_1\nitem_2...
+def build_list_inbox_response(summary_list):
+    safe_summary_text = change_special_text("\n".join(summary_list))
+    return "OK|LIST_INBOX|" + safe_summary_text
+
+
+# Parse the LIST_INBOX success reply.
+def parse_list_inbox_response(message):
+    parts = message.strip().split("|", 2)
+
+    if len(parts) != 3 or parts[0] != "OK" or parts[1] != "LIST_INBOX":
+        return None
+
+    summary_text = restore_special_text(parts[2])
+
+    if summary_text == "NO_ITEMS":
+        return []
+    if summary_text == "":
+        return []
+
+    return summary_text.split("\n")
+
+
+# READ_ITEM success reply:
+# OK|READ_ITEM|type|sender|detail_1|detail_2|content
+def build_read_item_response(item):
+    item_type = change_special_text(item["type"])
+    sender = change_special_text(item["sender"])
+    detail_1 = ""
+    detail_2 = ""
+
+    if item["type"] == "file":
+        detail_1 = item.get("file_name", "")
+    elif item["type"] == "acknowledgement":
+        detail_1 = item.get("related_type", "")
+        detail_2 = item.get("file_name", "")
+
+    safe_detail_1 = change_special_text(detail_1)
+    safe_detail_2 = change_special_text(detail_2)
+    safe_content = change_special_text(item.get("content", ""))
+
+    return (
+        "OK|READ_ITEM|"
+        + item_type
+        + "|"
+        + sender
+        + "|"
+        + safe_detail_1
+        + "|"
+        + safe_detail_2
+        + "|"
+        + safe_content
+    )
+
+
+# Parse the READ_ITEM success reply.
+def parse_read_item_response(message):
+    parts = message.strip().split("|", 6)
+
+    if len(parts) != 7 or parts[0] != "OK" or parts[1] != "READ_ITEM":
+        return None
+
+    return {
+        "type": restore_special_text(parts[2]),
+        "sender": restore_special_text(parts[3]),
+        "detail_1": restore_special_text(parts[4]),
+        "detail_2": restore_special_text(parts[5]),
+        "content": restore_special_text(parts[6])
+    }
+
+
 """---- Server Response Protocol ----"""
 # Standard success reply:
 # OK|COMMAND|message

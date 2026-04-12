@@ -362,6 +362,148 @@ def send_file_to_friends(client_socket, current_user_id):
         print_box(["Error", "Invalid response from server"])
 
 
+# Ask the server for the latest inbox list of the current user.
+def get_inbox_list_from_server(client_socket, current_user_id):
+    request = protocol.build_list_inbox_request(current_user_id)
+    reply = send_command(client_socket, request)
+    summary_list = protocol.parse_list_inbox_response(reply)
+
+    if summary_list is not None:
+        return summary_list, ""
+
+    parts = protocol.parse_message(reply)
+
+    if len(parts) >= 3 and parts[1] == "LIST_INBOX":
+        return None, parts[2]
+    else:
+        return None, "Invalid response from server"
+
+
+# Read one inbox item from the server by item number.
+def read_inbox_item_from_server(client_socket, current_user_id, item_number):
+    request = protocol.build_read_item_request(current_user_id, item_number)
+    reply = send_command(client_socket, request)
+    item_data = protocol.parse_read_item_response(reply)
+
+    if item_data is not None:
+        return item_data, ""
+
+    parts = protocol.parse_message(reply)
+
+    if len(parts) >= 3 and parts[1] == "READ_ITEM":
+        return None, parts[2]
+    else:
+        return None, "Invalid response from server"
+
+
+# Delete one inbox item on the server by item number.
+def delete_inbox_item_from_server(client_socket, current_user_id, item_number):
+    request = protocol.build_delete_item_request(current_user_id, item_number)
+    reply = send_command(client_socket, request)
+    parts = protocol.parse_message(reply)
+
+    if len(parts) >= 3 and parts[1] == "DELETE_ITEM":
+        return parts[0] == "OK", parts[2]
+    else:
+        return False, "Invalid response from server"
+
+
+# Show one inbox item clearly after the user chooses it.
+def show_inbox_item(item_data):
+    lines = []
+
+    if item_data["type"] == "message":
+        lines.append("Message from " + item_data["sender"])
+        lines.append("Content")
+    elif item_data["type"] == "broadcast":
+        lines.append("Broadcast from " + item_data["sender"])
+        lines.append("Content")
+    elif item_data["type"] == "file":
+        lines.append("File from " + item_data["sender"])
+        lines.append("File name: " + item_data["detail_1"])
+        lines.append("File content")
+    elif item_data["type"] == "acknowledgement":
+        lines.append("Acknowledgement from " + item_data["sender"])
+        if item_data["detail_1"] == "file" and item_data["detail_2"] != "":
+            lines.append("File name: " + item_data["detail_2"])
+        lines.append("Content")
+    else:
+        lines.append("Inbox item from " + item_data["sender"])
+        lines.append("Content")
+
+    content_lines = item_data["content"].split("\n")
+
+    for line in content_lines:
+        lines.append(line)
+
+    print_box(lines)
+
+
+# Show the inbox list, read one item, and let the user delete it.
+def show_inbox_menu(client_socket, current_user_id):
+    while True:
+        summary_list, error_message = get_inbox_list_from_server(
+            client_socket, current_user_id
+        )
+
+        if summary_list is None:
+            print_box(["Error", error_message])
+            return
+        if len(summary_list) == 0:
+            print_box(["Your inbox", "Your inbox is empty."])
+            return
+
+        lines = ["Your inbox"]
+
+        for i in range(len(summary_list)):
+            lines.append(str(i + 1) + ". " + summary_list[i])
+
+        print_box(lines)
+        print("Enter r to return to main menu.\n")
+
+        choice = input("Enter item number to read: ").strip().lower()
+
+        if choice == "r":
+            print()
+            return
+        if not choice.isdigit():
+            print_box(["Error", "Invalid choice. Please try again."])
+            continue
+
+        item_data, error_message = read_inbox_item_from_server(
+            client_socket, current_user_id, choice
+        )
+
+        if item_data is None:
+            print_box(["Error", error_message])
+            continue
+
+        show_inbox_item(item_data)
+
+        while True:
+            print("1. Delete this item")
+            print("2. Return to inbox list")
+
+            action = input("Enter your choice: ").strip()
+
+            if action == "1":
+                delete_ok, delete_message = delete_inbox_item_from_server(
+                    client_socket, current_user_id, choice
+                )
+
+                if delete_ok:
+                    print_box(["Delete item", delete_message])
+                else:
+                    print_box(["Error", delete_message])
+
+                break
+            elif action == "2":
+                print()
+                break
+            else:
+                print_box(["Error", "Invalid choice. Please try again."])
+
+
 # Send one message to all friends in the current user's friend list.
 # This uses the same multi-line message input as the normal message module.
 def broadcast_message_to_all_friends(client_socket, current_user_id):
@@ -419,7 +561,7 @@ def show_main_menu(client_socket, current_user_id):
             send_file_to_friends(client_socket, current_user_id)
 
         elif choice == "5":
-            print("This function is not implemented yet.\n")
+            show_inbox_menu(client_socket, current_user_id)
 
         elif choice == "6":
             reply = send_command(client_socket, "LOGOUT")

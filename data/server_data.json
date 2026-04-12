@@ -20,7 +20,21 @@
         "jane": []
     },
     "messages": {
-        "jimmy": [],
+        "jimmy": [
+            {
+                "type": "acknowledgement",
+                "sender": "mary",
+                "related_type": "message",
+                "content": "Message has been read."
+            },
+            {
+                "type": "acknowledgement",
+                "sender": "mary",
+                "related_type": "file",
+                "content": "File has been read.",
+                "file_name": "sample1.txt"
+            }
+        ],
         "mary": [
             {
                 "type": "message",
@@ -28,7 +42,8 @@
                 "recipients": [
                     "mary"
                 ],
-                "content": "hello, my name is jimmy"
+                "content": "hello, my name is jimmy",
+                "ack_sent": true
             },
             {
                 "type": "message",
@@ -171,6 +186,16 @@
                 ],
                 "file_name": "sample_message_1.txt",
                 "content": "Hello Mary, this is a simple test message.\n"
+            },
+            {
+                "type": "file",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary"
+                ],
+                "file_name": "sample1.txt",
+                "content": "Hello Mary, this is a simple test message.\n",
+                "ack_sent": true
             }
         ],
         "peter": [
