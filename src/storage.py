@@ -1,10 +1,11 @@
+"""
+This file handles reading and writing the JSON data files.
+It keeps the storage logic simple for the server.
+"""
+
 import json
 
 import config
-
-
-# This file handles reading and writing the JSON data files.
-# It keeps the storage logic simple for the server.
 
 
 # Load the default user accounts from JSON.
@@ -121,6 +122,21 @@ def save_message(data, sender, recipient_list, message_content):
         message_box = get_message_box(data, recipient)
         new_message = {
             "type": "message",
+            "sender": sender,
+            "recipients": recipient_list[:],
+            "content": message_content
+        }
+        message_box.append(new_message)
+
+
+# Save one broadcast message into every friend's message box.
+def save_broadcast_message(data, sender, message_content):
+    recipient_list = get_friend_list(data, sender)[:]
+
+    for recipient in recipient_list:
+        message_box = get_message_box(data, recipient)
+        new_message = {
+            "type": "broadcast",
             "sender": sender,
             "recipients": recipient_list[:],
             "content": message_content

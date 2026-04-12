@@ -2,11 +2,13 @@
     "friends": {
         "jimmy": [
             "mary",
-            "peter"
+            "peter",
+            "bob"
         ],
         "mary": [
             "peter",
-            "david"
+            "david",
+            "bob"
         ],
         "peter": [],
         "david": [],
@@ -27,14 +29,95 @@
                     "mary"
                 ],
                 "content": "hello, my name is jimmy"
+            },
+            {
+                "type": "message",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary",
+                    "peter"
+                ],
+                "content": "i love you all"
+            },
+            {
+                "type": "broadcast",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary",
+                    "peter",
+                    "bob"
+                ],
+                "content": "hello everyone\ni am coming for you"
             }
         ],
-        "peter": [],
-        "david": [],
+        "peter": [
+            {
+                "type": "message",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary",
+                    "peter"
+                ],
+                "content": "i love you all"
+            },
+            {
+                "type": "broadcast",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary",
+                    "peter",
+                    "bob"
+                ],
+                "content": "hello everyone\ni am coming for you"
+            },
+            {
+                "type": "broadcast",
+                "sender": "mary",
+                "recipients": [
+                    "peter",
+                    "david",
+                    "bob"
+                ],
+                "content": "dllm"
+            }
+        ],
+        "david": [
+            {
+                "type": "broadcast",
+                "sender": "mary",
+                "recipients": [
+                    "peter",
+                    "david",
+                    "bob"
+                ],
+                "content": "dllm"
+            }
+        ],
         "john": [],
         "george": [],
         "alice": [],
-        "bob": [],
+        "bob": [
+            {
+                "type": "broadcast",
+                "sender": "jimmy",
+                "recipients": [
+                    "mary",
+                    "peter",
+                    "bob"
+                ],
+                "content": "hello everyone\ni am coming for you"
+            },
+            {
+                "type": "broadcast",
+                "sender": "mary",
+                "recipients": [
+                    "peter",
+                    "david",
+                    "bob"
+                ],
+                "content": "dllm"
+            }
+        ],
         "tom": [],
         "jane": []
     },

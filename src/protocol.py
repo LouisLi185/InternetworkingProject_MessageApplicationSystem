@@ -2,13 +2,14 @@
 # between the client and the server.
 # Most requests and replies use "|" as the separator.
 
-
+"""---- Login Protocol ----"""
 # LOGIN request:
 # LOGIN|user_id|password
 def build_login_request(user_id, password):
     return "LOGIN|" + user_id + "|" + password
 
 
+"""---- Friend List Management Protocol ----"""
 # VIEW_FRIENDS request:
 # VIEW_FRIENDS|user_id
 def build_view_friends_request(user_id):
@@ -27,6 +28,7 @@ def build_delete_friend_request(user_id, friend_id):
     return "DELETE_FRIEND|" + user_id + "|" + friend_id
 
 
+"""---- Message Sending Protocol ----"""
 # Replace special characters before sending a message.
 # This helps multi-line messages work in one text request.
 def change_special_text(text):
@@ -89,6 +91,28 @@ def parse_send_message_request(message):
     return user_id, recipient_list, message_content
 
 
+"""---- Broadcast Message Protocol ----"""
+# BROADCAST request:
+# BROADCAST|sender|message_content
+def build_broadcast_request(user_id, message_content):
+    safe_message_content = change_special_text(message_content)
+    return "BROADCAST|" + user_id + "|" + safe_message_content
+
+
+# Parse the BROADCAST request in a simple way.
+# split("|", 2) keeps the message body as one whole part.
+def parse_broadcast_request(message):
+    parts = message.strip().split("|", 2)
+
+    if len(parts) != 3 or parts[0] != "BROADCAST":
+        return None
+
+    user_id = parts[1]
+    message_content = restore_special_text(parts[2])
+    return user_id, message_content
+
+
+"""---- Server Response Protocol ----"""
 # Standard success reply:
 # OK|COMMAND|message
 def build_success_response(command, message):

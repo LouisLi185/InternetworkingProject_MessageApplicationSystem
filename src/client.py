@@ -250,6 +250,36 @@ def send_message_to_friends(client_socket, current_user_id):
         print_box(["Error", "Invalid response from server"])
 
 
+# Send one message to all friends in the current user's friend list.
+# This uses the same multi-line message input as the normal message module.
+def broadcast_message_to_all_friends(client_socket, current_user_id):
+    friend_list, error_message = get_friend_list_from_server(
+        client_socket, current_user_id
+    )
+
+    if friend_list is None:
+        print_box(["Error", error_message])
+        return
+    if len(friend_list) == 0:
+        print_box(["Broadcast message", "You do not have any friends to broadcast to."])
+        return
+
+    lines = ["Broadcast message to all friends", "Your friends"]
+    for friend_id in friend_list:
+        lines.append(friend_id)
+    print_box(lines)
+
+    message_content = input_message_content()
+    request = protocol.build_broadcast_request(current_user_id, message_content)
+    reply = send_command(client_socket, request)
+    parts = protocol.parse_message(reply)
+
+    if len(parts) >= 3 and parts[1] == "BROADCAST":
+        print_box(parts[2])
+    else:
+        print_box(["Error", "Invalid response from server"])
+
+
 # Show the main menu after login.
 def show_main_menu(client_socket, current_user_id):
     while True:
@@ -271,7 +301,7 @@ def show_main_menu(client_socket, current_user_id):
             send_message_to_friends(client_socket, current_user_id)
 
         elif choice == "3":
-            print("This function is not implemented yet.\n")
+            broadcast_message_to_all_friends(client_socket, current_user_id)
 
         elif choice == "4":
             print("This function is not implemented yet.\n")

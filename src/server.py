@@ -53,6 +53,16 @@ def check_message_receivers(sender, recipient_list):
     return checked_list, ""
 
 
+# Check whether the sender has friends for broadcast.
+def get_broadcast_receivers(sender):
+    friend_list = storage.get_friend_list(server_data, sender)
+
+    if len(friend_list) == 0:
+        return [], "You do not have any friends to broadcast to"
+
+    return friend_list[:], ""
+
+
 # Handle one connected client.
 def handle_client(client_socket, client_address):
     print("Client connected:", client_address)
@@ -229,6 +239,50 @@ def handle_client(client_socket, client_address):
                                 storage.save_server_data(server_data)
                                 reply = protocol.build_success_response(
                                     "SEND_MESSAGE", "Message sent successfully"
+                                )
+
+            # BROADCAST protocol:
+            # BROADCAST|sender|message_content
+            elif command == "BROADCAST":
+                if current_user == "":
+                    reply = protocol.build_error_response(
+                        "BROADCAST", "Please login first"
+                    )
+                else:
+                    request_data = protocol.parse_broadcast_request(message)
+
+                    if request_data is None:
+                        reply = protocol.build_error_response(
+                            "BROADCAST", "Wrong broadcast format"
+                        )
+                    else:
+                        sender = request_data[0]
+                        message_content = request_data[1]
+
+                        if sender != current_user:
+                            reply = protocol.build_error_response(
+                                "BROADCAST", "Wrong user"
+                            )
+                        else:
+                            friend_list, error_message = get_broadcast_receivers(
+                                sender
+                            )
+
+                            if error_message != "":
+                                reply = protocol.build_error_response(
+                                    "BROADCAST", error_message
+                                )
+                            elif message_content.strip() == "":
+                                reply = protocol.build_error_response(
+                                    "BROADCAST", "Message cannot be empty"
+                                )
+                            else:
+                                storage.save_broadcast_message(
+                                    server_data, sender, message_content
+                                )
+                                storage.save_server_data(server_data)
+                                reply = protocol.build_success_response(
+                                    "BROADCAST", "Broadcast sent successfully"
                                 )
 
             # LOGOUT protocol:
