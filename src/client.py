@@ -587,7 +587,7 @@ def main():
 
     try:
         # Connect to the server first, then wait for the welcome line.
-        client_socket.connect((config.HOST, config.PORT))
+        client_socket.connect((config.CLIENT_HOST, config.PORT))
         receive_reply(client_socket)
 
         while True:

@@ -2,7 +2,15 @@ import os
 
 
 # Basic server connection settings.
-HOST = "127.0.0.1"
+# SERVER_HOST is used by server.py when listening for connections.
+# 0.0.0.0 lets the server accept clients from other computers.
+SERVER_HOST = "0.0.0.0"
+
+# CLIENT_HOST is used by client.py when connecting to the server.
+# For the server computer, 127.0.0.1 is fine.
+# For other computers, change this to the server computer IP address.
+CLIENT_HOST = "127.0.0.1"
+
 PORT = 5000
 BUFFER_SIZE = 1024
 

@@ -529,10 +529,10 @@ def main():
     # Basic socket setup.
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind((config.HOST, config.PORT))
+    server_socket.bind((config.SERVER_HOST, config.PORT))
     server_socket.listen(5)
 
-    print("Server is listening on", config.HOST, config.PORT)
+    print("Server is listening on", config.SERVER_HOST, config.PORT)
     print("Default users loaded:", len(users))
 
     try:
