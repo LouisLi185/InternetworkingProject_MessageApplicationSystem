@@ -11,7 +11,9 @@ SERVER_HOST = "0.0.0.0"
 # For other computers, change this to the server computer IP address.
 CLIENT_HOST = "127.0.0.1"
 
-PORT = 5000
+# Use a simple default port for this project.
+# If this port is already used on your computer, change it here.
+PORT = 12345
 BUFFER_SIZE = 1024
 
 # Build file paths from the project base folder.

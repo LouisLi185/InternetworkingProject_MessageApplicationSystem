@@ -93,6 +93,18 @@ def is_text_file_name(file_name):
     return file_name.lower().endswith(".txt")
 
 
+# Check whether the new user ID format is simple and valid.
+def is_valid_new_user_id(user_id):
+    if user_id == "":
+        return False
+
+    for char in user_id:
+        if not (char.islower() or char.isdigit()):
+            return False
+
+    return True
+
+
 # Change the user input number into a simple 0-based inbox index.
 def get_inbox_index(number_text):
     try:
@@ -143,6 +155,43 @@ def handle_client(client_socket, client_address):
                     else:
                         reply = protocol.build_error_response(
                             "LOGIN", "Invalid user ID or password"
+                        )
+
+            # REGISTER protocol:
+            # REGISTER|user_id|password
+            elif command == "REGISTER":
+                if current_user != "":
+                    reply = protocol.build_error_response(
+                        "REGISTER", "Please logout first"
+                    )
+                elif len(parts) != 3:
+                    reply = protocol.build_error_response(
+                        "REGISTER", "Wrong register format"
+                    )
+                else:
+                    user_id = parts[1].strip().lower()
+                    password = parts[2].strip()
+
+                    if not is_valid_new_user_id(user_id):
+                        reply = protocol.build_error_response(
+                            "REGISTER",
+                            "User ID must use lowercase letters or numbers only"
+                        )
+                    elif password == "":
+                        reply = protocol.build_error_response(
+                            "REGISTER", "Password cannot be empty"
+                        )
+                    elif storage.user_exists(users, user_id):
+                        reply = protocol.build_error_response(
+                            "REGISTER", "User ID already exists"
+                        )
+                    else:
+                        storage.add_user(users, user_id, password)
+                        storage.prepare_new_user_data(server_data, user_id)
+                        storage.save_default_users(users)
+                        storage.save_server_data(server_data)
+                        reply = protocol.build_success_response(
+                            "REGISTER", "User registered successfully"
                         )
 
             # VIEW_FRIENDS protocol:
@@ -529,7 +578,14 @@ def main():
     # Basic socket setup.
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind((config.SERVER_HOST, config.PORT))
+
+    try:
+        server_socket.bind((config.SERVER_HOST, config.PORT))
+    except OSError:
+        print("Port", config.PORT, "is already in use.")
+        print("Please change PORT in src/config.py and try again.")
+        return
+
     server_socket.listen(5)
 
     print("Server is listening on", config.SERVER_HOST, config.PORT)

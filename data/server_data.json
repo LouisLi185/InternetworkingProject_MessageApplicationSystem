@@ -9,7 +9,10 @@
         "alice": [],
         "bob": [],
         "tom": [],
-        "jane": []
+        "jane": [],
+        "louis": [
+            "mary"
+        ]
     },
     "messages": {
         "jimmy": [],
@@ -21,7 +24,8 @@
         "alice": [],
         "bob": [],
         "tom": [],
-        "jane": []
+        "jane": [],
+        "louis": []
     },
     "files": {
         "jimmy": [],
@@ -33,6 +37,7 @@
         "alice": [],
         "bob": [],
         "tom": [],
-        "jane": []
+        "jane": [],
+        "louis": []
     }
 }

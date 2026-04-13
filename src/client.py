@@ -48,28 +48,55 @@ def send_command(client_socket, command):
     return receive_reply(client_socket)
 
 
+# Register one new user account from the client side.
+def register_new_user(client_socket):
+    print_box("Register a new user")
+    user_id = input("Enter new user ID: ").strip().lower()
+    password = input("Enter new password: ").strip()
+
+    request = protocol.build_register_request(user_id, password)
+    reply = send_command(client_socket, request)
+    parts = protocol.parse_message(reply)
+
+    if len(parts) >= 3 and parts[1] == "REGISTER":
+        print_box(parts[2])
+    else:
+        print_box(["Error", "Invalid response from server"])
+
+
 # Keep asking for login until the server accepts it.
 def show_login_screen(client_socket):
-    print("==========================")
-    print("Welcome to Message System")
-    print("==========================")
-    print("Please login")
-
     while True:
-        user_id = input("Your user ID: ").strip().lower()
-        password = input("Your password: ").strip()
+        print("==========================")
+        print("Welcome to Message System")
+        print("==========================")
+        print("1. Login")
+        print("2. Register")
+        print("3. Exit program")
 
-        request = protocol.build_login_request(user_id, password)
-        reply = send_command(client_socket, request)
-        parts = protocol.parse_message(reply)
+        choice = input("Enter your choice: ").strip()
 
-        if len(parts) >= 3 and parts[0] == "OK" and parts[1] == "LOGIN":
-            print_box(["Login successful", parts[2]])
-            return user_id
-        elif len(parts) >= 3 and parts[0] == "ERROR" and parts[1] == "LOGIN":
-            print_box(["Login failed", parts[2]])
+        if choice == "1":
+            user_id = input("Your user ID: ").strip().lower()
+            password = input("Your password: ").strip()
+
+            request = protocol.build_login_request(user_id, password)
+            reply = send_command(client_socket, request)
+            parts = protocol.parse_message(reply)
+
+            if len(parts) >= 3 and parts[0] == "OK" and parts[1] == "LOGIN":
+                print_box(["Login successful", parts[2]])
+                return user_id
+            elif len(parts) >= 3 and parts[0] == "ERROR" and parts[1] == "LOGIN":
+                print_box(["Login failed", parts[2]])
+            else:
+                print_box(["Login failed", "Invalid response from server"])
+        elif choice == "2":
+            register_new_user(client_socket)
+        elif choice == "3":
+            return ""
         else:
-            print_box(["Login failed", "Invalid response from server"])
+            print_box(["Error", "Invalid choice. Please try again."])
 
 
 # Ask the server for the latest friend list of the current user.
@@ -107,7 +134,7 @@ def view_friend_list(client_socket, current_user_id):
 
 
 def add_new_friend(client_socket, current_user_id):
-    # This function sends the ADD_FRIEND protocol request.
+    # Sends the ADD_FRIEND protocol request.
     print_box("Add a new friend")
     friend_id = input("Enter friend user ID: ").strip()
 
@@ -122,7 +149,7 @@ def add_new_friend(client_socket, current_user_id):
 
 
 def delete_friend(client_socket, current_user_id):
-    # This function sends the DELETE_FRIEND protocol request.
+    # Sends the DELETE_FRIEND protocol request.
     print_box("Delete your friend")
     friend_id = input("Enter friend user ID: ").strip()
 
@@ -593,6 +620,10 @@ def main():
         while True:
             # After logout, the program will show the login screen again.
             current_user_id = show_login_screen(client_socket)
+
+            if current_user_id == "":
+                break
+
             should_continue = show_main_menu(client_socket, current_user_id)
             if not should_continue:
                 break

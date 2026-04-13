@@ -19,6 +19,13 @@ def load_default_users():
         return {}
 
 
+# Save the updated default users back to JSON.
+def save_default_users(users):
+    file = open(config.DEFAULT_USERS_FILE, "w")
+    json.dump(users, file, indent=4)
+    file.close()
+
+
 # Load saved server data such as friend lists.
 def load_server_data():
     try:
@@ -72,6 +79,32 @@ def prepare_server_data(data, users):
 # Check whether a user ID exists in the default user list.
 def user_exists(users, user_id):
     return user_id in users
+
+
+# Add one new user account into the default users list.
+def add_user(users, user_id, password):
+    users[user_id] = password
+
+
+# Prepare one new user's empty data in server_data.json.
+def prepare_new_user_data(data, user_id):
+    if "friends" not in data:
+        data["friends"] = {}
+
+    if "messages" not in data:
+        data["messages"] = {}
+
+    if "files" not in data:
+        data["files"] = {}
+
+    if user_id not in data["friends"]:
+        data["friends"][user_id] = []
+
+    if user_id not in data["messages"]:
+        data["messages"][user_id] = []
+
+    if user_id not in data["files"]:
+        data["files"][user_id] = []
 
 
 # Get the current friend list of one user.

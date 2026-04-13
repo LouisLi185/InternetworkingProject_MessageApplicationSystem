@@ -9,6 +9,12 @@ def build_login_request(user_id, password):
     return "LOGIN|" + user_id + "|" + password
 
 
+# REGISTER request:
+# REGISTER|user_id|password
+def build_register_request(user_id, password):
+    return "REGISTER|" + user_id + "|" + password
+
+
 """---- Friend List Management Protocol ----"""
 # VIEW_FRIENDS request:
 # VIEW_FRIENDS|user_id
