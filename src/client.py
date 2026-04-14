@@ -116,20 +116,38 @@ def get_friend_list_from_server(client_socket, current_user_id):
         return None, "Invalid response from server"
 
 
+def get_friend_status_list_from_server(client_socket, current_user_id):
+    request = protocol.build_view_friends_status_request(current_user_id)
+    reply = send_command(client_socket, request)
+    friend_status_list = protocol.parse_view_friends_status_response(reply)
+
+    if friend_status_list is not None:
+        return friend_status_list, ""
+
+    parts = protocol.parse_message(reply)
+
+    if len(parts) >= 3 and parts[1] == "VIEW_FRIENDS_STATUS":
+        return None, parts[2]
+    else:
+        return None, "Invalid response from server"
+
+
 # Set up the Friend module:view, add, delete
 def view_friend_list(client_socket, current_user_id):
-    friend_list, error_message = get_friend_list_from_server(
+    friend_status_list, error_message = get_friend_status_list_from_server(
         client_socket, current_user_id
     )
 
-    if friend_list is None:
+    if friend_status_list is None:
         print_box(["Error", error_message])
-    elif len(friend_list) == 0:
+    elif len(friend_status_list) == 0:
         print_box(["Your friend list", "You do not have any friends yet."])
     else:
         lines = ["Your friend list"]
-        for friend_id in friend_list:
-            lines.append(friend_id)
+        for friend_status in friend_status_list:
+            lines.append(
+                friend_status["friend_id"] + " [" + friend_status["status"] + "]"
+            )
         print_box(lines)
 
 

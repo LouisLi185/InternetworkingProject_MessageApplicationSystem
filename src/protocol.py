@@ -22,6 +22,50 @@ def build_view_friends_request(user_id):
     return "VIEW_FRIENDS|" + user_id
 
 
+# VIEW_FRIENDS_STATUS request:
+# VIEW_FRIENDS_STATUS|user_id
+def build_view_friends_status_request(user_id):
+    return "VIEW_FRIENDS_STATUS|" + user_id
+
+
+# VIEW_FRIENDS_STATUS success reply:
+# OK|VIEW_FRIENDS_STATUS|friend1:online,friend2:offline
+def build_view_friends_status_response(friend_status_list):
+    entry_list = []
+
+    for friend_status in friend_status_list:
+        entry_list.append(friend_status["friend_id"] + ":" + friend_status["status"])
+
+    return "OK|VIEW_FRIENDS_STATUS|" + ",".join(entry_list)
+
+
+# Parse the VIEW_FRIENDS_STATUS success reply.
+def parse_view_friends_status_response(message):
+    parts = message.strip().split("|", 2)
+
+    if len(parts) != 3 or parts[0] != "OK" or parts[1] != "VIEW_FRIENDS_STATUS":
+        return None
+
+    if parts[2] == "NO_FRIENDS":
+        return []
+
+    friend_status_list = []
+    entry_list = parts[2].split(",")
+
+    for entry in entry_list:
+        friend_and_status = entry.split(":", 1)
+
+        if len(friend_and_status) != 2:
+            return None
+
+        friend_status_list.append({
+            "friend_id": friend_and_status[0],
+            "status": friend_and_status[1]
+        })
+
+    return friend_status_list
+
+
 # ADD_FRIEND request:
 # ADD_FRIEND|user_id|friend_id
 def build_add_friend_request(user_id, friend_id):

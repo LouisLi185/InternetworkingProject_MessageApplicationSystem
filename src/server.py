@@ -13,6 +13,60 @@ import storage
 
 users = {}
 server_data = {}
+online_user_counts = {}
+online_users_lock = threading.Lock()
+
+# Check the user status.
+def mark_user_online(user_id):
+    with online_users_lock:
+        if user_id not in online_user_counts:
+            online_user_counts[user_id] = 0
+
+        online_user_counts[user_id] = online_user_counts[user_id] + 1
+
+
+def mark_user_offline(user_id):
+    with online_users_lock:
+        if user_id not in online_user_counts:
+            return
+
+        online_user_counts[user_id] = online_user_counts[user_id] - 1
+
+        if online_user_counts[user_id] <= 0:
+            del online_user_counts[user_id]
+
+
+def is_user_online(user_id):
+    with online_users_lock:
+        return user_id in online_user_counts
+
+
+def get_friend_status_list(user_id):
+    friend_list = storage.get_friend_list(server_data, user_id)
+    friend_status_list = []
+
+    for friend_id in friend_list:
+        status = "offline"
+
+        if is_user_online(friend_id):
+            status = "online"
+
+        friend_status_list.append({
+            "friend_id": friend_id,
+            "status": status
+        })
+
+    return friend_status_list
+
+
+def change_logged_in_user(current_user, next_user):
+    if current_user != "" and current_user != next_user:
+        mark_user_offline(current_user)
+
+    if next_user != "" and current_user != next_user:
+        mark_user_online(next_user)
+
+    return next_user
 
 # Read one full request line from the client.
 def receive_request(client_socket):
@@ -148,7 +202,7 @@ def handle_client(client_socket, client_address):
                     password = parts[2]
 
                     if storage.check_login(users, user_id, password):
-                        current_user = user_id
+                        current_user = change_logged_in_user(current_user, user_id)
                         reply = protocol.build_success_response(
                             "LOGIN", "Welcome, " + user_id
                         )
@@ -219,6 +273,33 @@ def handle_client(client_socket, client_address):
                     else:
                         reply = protocol.build_success_response(
                             "VIEW_FRIENDS", ",".join(friend_list)
+                        )
+
+            # VIEW_FRIENDS_STATUS protocol:
+            # VIEW_FRIENDS_STATUS|user_id
+            elif command == "VIEW_FRIENDS_STATUS":
+                if current_user == "":
+                    reply = protocol.build_error_response(
+                        "VIEW_FRIENDS_STATUS", "Please login first"
+                    )
+                elif len(parts) != 2:
+                    reply = protocol.build_error_response(
+                        "VIEW_FRIENDS_STATUS", "Wrong view friends format"
+                    )
+                elif parts[1] != current_user:
+                    reply = protocol.build_error_response(
+                        "VIEW_FRIENDS_STATUS", "Wrong user"
+                    )
+                else:
+                    friend_status_list = get_friend_status_list(current_user)
+
+                    if len(friend_status_list) == 0:
+                        reply = protocol.build_success_response(
+                            "VIEW_FRIENDS_STATUS", "NO_FRIENDS"
+                        )
+                    else:
+                        reply = protocol.build_view_friends_status_response(
+                            friend_status_list
                         )
 
             # ADD_FRIEND protocol:
@@ -547,7 +628,7 @@ def handle_client(client_socket, client_address):
                     reply = protocol.build_success_response(
                         "LOGOUT", "Goodbye, " + current_user
                     )
-                    current_user = ""
+                    current_user = change_logged_in_user(current_user, "")
 
             # Any unknown command will return an error reply.
             else:
@@ -560,6 +641,7 @@ def handle_client(client_socket, client_address):
     except Exception as e:
         print("Error with", client_address, ":", e)
 
+    current_user = change_logged_in_user(current_user, "")
     client_socket.close()
     print("Client disconnected:", client_address)
 
