@@ -1,33 +1,24 @@
 # Message Application System
 
-This project is a socket-based messaging system written in Python for the INT3069 group project. It uses a simple client-server design over TCP and stores project data in JSON files. The system supports login, friend management, direct messaging, broadcast messaging, text file sending, inbox access, item deletion, and read acknowledgement handling.
+This project is a socket-based messaging system written in Python for the INT3069 group project. It uses a central TCP server, JSON files for persistence, a simple line-based application protocol, and two client interfaces:
 
-The codebase is intentionally kept simple and beginner-friendly. It uses plain Python functions, dictionaries, lists, JSON storage, and a basic line-based text protocol so that the project is easy to read, explain, and demonstrate.
+- a terminal client in `src/client.py`
+- a Tkinter GUI client in `src/gui_client.py`
 
-## Main Features
+## Current Features
 
-- User login with predefined accounts
-- Friend list management
-  - View friends
-  - Add a friend
-  - Delete a friend
-- Message module
-  - Send a message to one or more friends
-  - Support single-line and multi-line messages
-- Broadcast module
-  - Send one message to all friends of the current user
-- File module
-  - Send `.txt` files only
-  - Send to one friend or multiple friends
-  - Check file existence before sending
-- Inbox module
-  - List messages, broadcasts, files, and acknowledgements
-  - Read one selected inbox item
-  - Delete one selected inbox item
-- Acknowledgement mechanism
-  - Reading a normal message sends an acknowledgement to the original sender
-  - Reading a file sends an acknowledgement to the original sender
-  - Reading an acknowledgement does not create another acknowledgement
+- Login with predefined accounts from `data/default_users.json`
+- Register a new account and persist it to `data/default_users.json`
+- View friend list with online or offline status
+- Add a friend
+- Delete a friend
+- Send direct messages to one or more friends
+- Send broadcast messages to all current friends
+- Send `.txt` files to one or more friends
+- View inbox items
+- Read inbox items
+- Delete inbox items
+- Automatically generate acknowledgements when a normal message or file is read
 
 ## Project Structure
 
@@ -35,130 +26,97 @@ The codebase is intentionally kept simple and beginner-friendly. It uses plain P
 INT3069_GroupProject/
 ├── src/
 │   ├── client.py
-│   ├── server.py
+│   ├── config.py
+│   ├── gui_client.py
 │   ├── protocol.py
-│   ├── storage.py
-│   └── config.py
+│   ├── server.py
+│   └── storage.py
 ├── data/
 │   ├── default_users.json
 │   └── server_data.json
+├── docs/
+│   └── Protocol_Specification.docx
 ├── text_files/
 │   ├── sample1.txt
 │   ├── sample2.txt
 │   └── sample3.txt
-├── docs/
-│   └── Protocol_Specification.docx
+├── video/
+│   └── .gitkeep
 └── README.md
 ```
 
-## File Description
-
-### `src/client.py`
-
-The client program handles:
-
-- login
-- menu display
-- user input
-- sending requests to the server
-- receiving server replies
-- showing messages in a simple boxed text UI
+## File Overview
 
 ### `src/server.py`
 
-The server program handles:
+The server:
 
-- TCP connection setup
-- request parsing
-- login validation
-- friend checking
-- message, broadcast, and file delivery
-- inbox listing, reading, and deleting
-- automatic acknowledgement creation
+- accepts TCP connections
+- handles one client per thread
+- validates login and registration
+- manages friend lists
+- delivers messages, broadcasts, and files
+- lists, reads, and deletes inbox items
+- tracks online users for friend status display
+- writes persistent changes to `data/server_data.json`
+
+### `src/client.py`
+
+The terminal client:
+
+- shows text menus
+- sends protocol requests to the server
+- supports login and registration
+- supports multi-line message input
+- supports file sending from `text_files/` or the project root
+- shows inbox items in a boxed terminal layout
+
+### `src/gui_client.py`
+
+The GUI client:
+
+- provides a Tkinter desktop interface
+- supports login, registration, reconnect, and logout
+- shows friend status in a left-side list
+- supports message, broadcast, file, and inbox workflows in tabs
+- uses one top `Refresh` button to reload both friend list and inbox
+- opens inbox items by double-click
+- keeps only a `Delete` button under the inbox list
 
 ### `src/protocol.py`
 
-This file defines the text-based application protocol used between the client and server. The current implementation uses a simple `|`-separated command format with escaped special characters for multi-line content.
+This file defines the actual protocol used by the running system:
+
+- plain text
+- one request or response per line
+- `|` as the main field separator
+- escaped special characters for multi-line text and file content
 
 ### `src/storage.py`
 
-This file manages all JSON storage logic, including:
+This file handles:
 
-- loading user accounts
-- loading server data
-- saving updated server data
-- friend list storage
+- reading and writing JSON data
+- preparing empty server data for users
+- friend storage
 - message storage
 - file storage
-- inbox access
+- inbox listing and deletion
 - acknowledgement creation
 
 ### `src/config.py`
 
-This file stores the basic project configuration:
+This file stores:
 
 - server host
-- server port
+- client host
+- port
 - buffer size
-- file paths for JSON data files
+- JSON file paths
 
 ### `data/default_users.json`
 
-This file stores the predefined user accounts used for login.
-
-### `data/server_data.json`
-
-This file stores the server-side project data, including:
-
-- friend lists
-- message mailboxes
-- file mailboxes
-
-### `text_files/`
-
-This folder contains sample `.txt` files for testing the file module.
-
-### `docs/Protocol_Specification.docx`
-
-This folder contains the project protocol document prepared for the course project documentation.
-
-## Requirements
-
-- Python 3
-- No external libraries are required
-
-This project uses only the Python standard library, mainly:
-
-- `socket`
-- `threading`
-- `json`
-- `os`
-
-## How to Run
-
-Open two terminals in the project folder.
-
-### 1. Start the server
-
-```bash
-python3 src/server.py
-```
-
-### 2. Start the client
-
-```bash
-python3 src/client.py
-```
-
-You can open more client terminals if you want to test different users.
-
-## Default Login Accounts
-
-All default users currently use the same password:
-
-- Password: `1234`
-
-Example user IDs:
+This file stores login accounts. The project currently starts with 10 default users:
 
 - `jimmy`
 - `mary`
@@ -171,93 +129,140 @@ Example user IDs:
 - `tom`
 - `jane`
 
-## Current Modules
+All 10 default users use password `1234`.
 
-### 1. Friend Management
+Newly registered users are also written into this file.
 
-The system supports:
+### `data/server_data.json`
 
-- viewing the current friend list
-- adding a valid user as a friend
-- deleting an existing friend
+This file stores:
 
-### 2. Direct Message Module
+- `friends`
+- `messages`
+- `files`
 
-The system supports:
+The current repository data has been reset to a clean demo state for the 10 default users, with empty friend lists and empty inbox data.
 
-- sending a message to one friend or multiple friends
-- checking that recipients are in the sender's friend list
-- multi-line message input
+### `text_files/`
 
-Multi-line input ends when the user enters two blank lines in a row.
+This folder contains sample `.txt` files for file-sending tests:
 
-### 3. Broadcast Module
+- `sample1.txt`: short single-line text
+- `sample2.txt`: short multi-line text
+- `sample3.txt`: longer multi-line text
 
-The system supports:
+### `docs/Protocol_Specification.docx`
 
-- sending one message to all friends of the current user
-- rejecting broadcast if the user has no friends
-- storing the broadcast in each friend's message mailbox
+This file is a course documentation artifact. It is not an exact description of the current implementation. The document describes a JSON and token-based protocol, while the actual code in `src/` uses a plain-text line protocol with `|` separators.
 
-### 4. File Module
+## Requirements
 
-The system supports:
+- Python 3
+- No third-party libraries
 
-- sending `.txt` files only
-- selecting one or more recipients
-- checking that recipients are friends
-- checking that the file exists
-- reading file content and storing it on the server
+The project uses only the standard library, mainly:
 
-The client looks for the entered file name in:
+- `socket`
+- `threading`
+- `json`
+- `os`
+- `tkinter`
 
-1. `text_files/`
-2. the project base folder
+## Configuration
 
-### 5. Inbox Module
+Default connection settings are defined in `src/config.py`:
 
-The inbox supports:
+```python
+SERVER_HOST = "0.0.0.0"
+CLIENT_HOST = "127.0.0.1"
+PORT = 12345
+BUFFER_SIZE = 1024
+```
 
-- listing all messages, broadcasts, files, and acknowledgements
-- reading one selected item
-- deleting one selected item
+If you want to connect from another computer on the same network:
 
-Inbox items are shown in a numbered list so the user can select them easily.
+1. keep `SERVER_HOST = "0.0.0.0"` on the server machine
+2. change `CLIENT_HOST` on the client machine to the server machine's IP address
+3. make sure the selected port is open and unused
 
-### 6. Acknowledgement Mechanism
+## How to Run
 
-The system supports automatic acknowledgements:
+Open the project folder in separate terminals.
 
-- When a normal message is read, an acknowledgement is sent to the original sender
-- When a file is read, an acknowledgement is sent to the original sender
-- When an acknowledgement is read, no new acknowledgement is created
+### 1. Start the server
 
-This prevents acknowledgement loops.
+```bash
+python3 src/server.py
+```
 
-## Protocol Style
+### 2. Start one client
 
-The current project implementation uses a simple plain-text protocol over TCP.
+Terminal client:
+
+```bash
+python3 src/client.py
+```
+
+GUI client:
+
+```bash
+python3 src/gui_client.py
+```
+
+You can open multiple clients at the same time to test communication between different users.
+
+## Usage Notes
+
+### Terminal client
+
+- Login and registration are handled from the terminal menu.
+- Multi-line message input ends when the user enters two blank lines in a row.
+- File sending checks `text_files/` first, then the project root.
+- Inbox items are selected by number.
+
+### GUI client
+
+- The login screen supports `Login`, `Register`, and `Reconnect`.
+- Login-screen errors are shown in dark red.
+- After successful registration, the GUI shows a message box and asks the user to log in again.
+- The top `Refresh` button reloads both the friend list and inbox.
+- The inbox opens items by double-click.
+- The inbox keeps a single full-width `Delete` button under the list.
+
+## Actual Protocol Summary
+
+The running implementation uses a simple line-based request and response protocol.
 
 Examples:
 
 ```text
 LOGIN|jimmy|1234
+REGISTER|newuser|pass123
 VIEW_FRIENDS|jimmy
+VIEW_FRIENDS_STATUS|jimmy
+ADD_FRIEND|jimmy|mary
+DELETE_FRIEND|jimmy|mary
 SEND_MESSAGE|jimmy|mary,peter|hello
 BROADCAST|jimmy|hello everyone
 SEND_FILE|jimmy|mary|sample1.txt|file_content
 LIST_INBOX|jimmy
 READ_ITEM|jimmy|1
 DELETE_ITEM|jimmy|1
+LOGOUT
 ```
 
-For multi-line message and file content, the project escapes special characters so that one request can still be sent as one complete text line.
+Server responses follow the same simple style:
 
-## Data Storage Design
+```text
+OK|LOGIN|Welcome, jimmy
+ERROR|LOGIN|Invalid user ID or password
+```
 
-The project stores all server data in `data/server_data.json`.
+For multi-line messages and file content, special characters are escaped before sending and restored after receiving.
 
-Top-level structure:
+## Data Design
+
+Top-level structure of `data/server_data.json`:
 
 ```json
 {
@@ -267,17 +272,22 @@ Top-level structure:
 }
 ```
 
-### Messages mailbox
+### Friend lists
 
-Examples of message-related item types:
+- friend relationships are stored per user as simple lists
+- adding a friend is one-directional in the current implementation
 
-- `message`
-- `broadcast`
-- `acknowledgement`
+### Message box
 
-### Files mailbox
+The `messages` section can contain:
 
-Files are stored in the `files` section with fields such as:
+- normal messages
+- broadcasts
+- acknowledgements
+
+### File box
+
+The `files` section contains file items with fields such as:
 
 - `type`
 - `sender`
@@ -285,42 +295,33 @@ Files are stored in the `files` section with fields such as:
 - `file_name`
 - `content`
 
-## Sample Text Files
+### Inbox order
 
-The project includes ready-to-use testing files:
+Inbox display is assembled dynamically:
 
-- `text_files/sample1.txt`
-  - short single-line text
-- `text_files/sample2.txt`
-  - short multi-line text
-- `text_files/sample3.txt`
-  - longer multi-line text
+1. all message-box items first
+2. all file-box items after that
 
-These are useful for testing:
+## Acknowledgement Rules
 
-- file existence checking
-- text file delivery
-- file content reading
-- multi-line file content preservation
+The server automatically creates acknowledgements when:
 
-## Notes About the Current Implementation
+- a normal message is read
+- a file is read
 
-- The system uses one request and one response per line
-- The server keeps data in JSON instead of a database
-- The UI is terminal-based and uses a simple boxed display style
-- The project is designed to be clear and easy for students to explain in class
+The server does not create another acknowledgement when:
 
-## Possible Future Improvements
+- a broadcast is read
+- an acknowledgement is read
+- the item was already acknowledged before
 
-If the project is extended later, possible directions include:
+## Important Notes
 
-- stronger password handling
-- user registration
-- timestamps for inbox items
-- inbox sorting
-- permanent session handling
-- better file type checking
-- improved concurrent access protection for JSON updates
+- The project has both a terminal client and a GUI client.
+- Registration is already implemented and persists new users.
+- The server rewrites `server_data.json` on startup to ensure all users have `friends`, `messages`, and `files` entries.
+- There is no automated test suite in the repository at the moment.
+- The Word protocol document should be treated as reference material, not as the exact live protocol contract.
 
 ## Authors
 
