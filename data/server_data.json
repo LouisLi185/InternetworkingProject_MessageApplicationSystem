@@ -1,13 +1,7 @@
 {
     "friends": {
-        "jimmy": [
-            "louis",
-            "mary"
-        ],
-        "mary": [
-            "louis",
-            "jimmy"
-        ],
+        "jimmy": [],
+        "mary": [],
         "peter": [],
         "david": [],
         "john": [],
@@ -15,11 +9,7 @@
         "alice": [],
         "bob": [],
         "tom": [],
-        "jane": [],
-        "louis": [
-            "mary",
-            "jimmy"
-        ]
+        "jane": []
     },
     "messages": {
         "jimmy": [],
@@ -31,33 +21,7 @@
         "alice": [],
         "bob": [],
         "tom": [],
-        "jane": [],
-        "louis": [
-            {
-                "type": "message",
-                "sender": "jimmy",
-                "recipients": [
-                    "louis"
-                ],
-                "content": "Dear Xiao Hua:\n  Knowing that you are interested in t",
-                "ack_sent": true
-            },
-            {
-                "type": "acknowledgement",
-                "sender": "jimmy",
-                "related_type": "message",
-                "content": "Message has been read."
-            },
-            {
-                "type": "broadcast",
-                "sender": "mary",
-                "recipients": [
-                    "louis",
-                    "jimmy"
-                ],
-                "content": "i love u all"
-            }
-        ]
+        "jane": []
     },
     "files": {
         "jimmy": [],
@@ -69,7 +33,6 @@
         "alice": [],
         "bob": [],
         "tom": [],
-        "jane": [],
-        "louis": []
+        "jane": []
     }
 }
