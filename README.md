@@ -5,6 +5,11 @@ This project is a socket-based messaging system written in Python for the INT306
 - a terminal client in `src/client.py`
 - a Tkinter GUI client in `src/gui_client.py`
 
+The current version keeps the original beginner-friendly project style and adds two practical networking enhancements for the GUI file workflow:
+
+- chunked transfer with integrity checking
+- compression for larger text file payloads
+
 ## Current Features
 
 - Login with predefined accounts from `data/default_users.json`
@@ -19,8 +24,12 @@ This project is a socket-based messaging system written in Python for the INT306
 - Read inbox items
 - Delete inbox items
 - Automatically generate acknowledgements when a normal message or file is read
+- GUI file transfer progress display
+- Chunked file transfer in the GUI client
+- Compression for larger file payloads
+- SHA-256 integrity verification after transfer reassembly
 
-## Project Structure
+## Current Project Structure
 
 ```text
 INT3069_GroupProject/
@@ -40,8 +49,9 @@ INT3069_GroupProject/
 │   ├── sample1.txt
 │   ├── sample2.txt
 │   └── sample3.txt
-├── video/
-│   └── .gitkeep
+├── FINAL_PROJECT_DOCUMENTATION_ZH_TW.tex
+├── FINAL_PROJECT_REFERENCES.bib
+├── FINAL_PROJECT_DOCUMENTATION_ZH_TW.pdf
 └── README.md
 ```
 
@@ -58,6 +68,10 @@ The server:
 - delivers messages, broadcasts, and files
 - lists, reads, and deletes inbox items
 - tracks online users for friend status display
+- supports both the old `SEND_FILE` path and the newer chunked transfer path
+- reassembles incoming transfer chunks
+- verifies SHA-256 integrity checks
+- decompresses transferred data when needed
 - writes persistent changes to `data/server_data.json`
 
 ### `src/client.py`
@@ -71,6 +85,8 @@ The terminal client:
 - supports file sending from `text_files/` or the project root
 - shows inbox items in a boxed terminal layout
 
+The terminal client keeps the original simple file-sending path and does not use the GUI progress-bar workflow.
+
 ### `src/gui_client.py`
 
 The GUI client:
@@ -81,7 +97,9 @@ The GUI client:
 - supports message, broadcast, file, and inbox workflows in tabs
 - uses one top `Refresh` button to reload both friend list and inbox
 - opens inbox items by double-click
-- keeps only a `Delete` button under the inbox list
+- keeps a simple inbox layout with one `Delete` button under the list
+- sends files through the newer chunked transfer workflow
+- shows a small transfer info label, percentage text, and progress bar for file sending
 
 ### `src/protocol.py`
 
@@ -91,6 +109,14 @@ This file defines the actual protocol used by the running system:
 - one request or response per line
 - `|` as the main field separator
 - escaped special characters for multi-line text and file content
+- helper functions for chunked transfer
+- helper functions for compression and decompression
+- helper functions for SHA-256 checksums
+
+It includes both:
+
+- the original command builders such as `LOGIN`, `SEND_MESSAGE`, `SEND_FILE`
+- the newer transfer commands `TRANSFER_START` and `TRANSFER_CHUNK`
 
 ### `src/storage.py`
 
@@ -104,6 +130,8 @@ This file handles:
 - inbox listing and deletion
 - acknowledgement creation
 
+The storage format is intentionally kept simple. Chunking and compression happen only during transfer, not in the saved JSON structure.
+
 ### `src/config.py`
 
 This file stores:
@@ -112,7 +140,16 @@ This file stores:
 - client host
 - port
 - buffer size
+- transfer chunk size
+- compression threshold
 - JSON file paths
+
+Current transfer-related settings:
+
+```python
+TRANSFER_CHUNK_SIZE = 700
+COMPRESSION_THRESHOLD = 256
+```
 
 ### `data/default_users.json`
 
@@ -149,24 +186,49 @@ This folder contains sample `.txt` files for file-sending tests:
 
 - `sample1.txt`: short single-line text
 - `sample2.txt`: short multi-line text
-- `sample3.txt`: longer multi-line text
+- `sample3.txt`: large text file for bigger transfer tests, chunking tests, and compression demos
 
 ### `docs/Protocol_Specification.docx`
 
-This file is a course documentation artifact. It is not an exact description of the current implementation. The document describes a JSON and token-based protocol, while the actual code in `src/` uses a plain-text line protocol with `|` separators.
+This file is a course documentation artifact. It is not an exact description of the current implementation.
 
-## Requirements
+The document describes a JSON and token-based protocol, while the actual code in `src/` uses a plain-text line protocol with `|` separators and does not use session tokens.
+
+### Root documentation files
+
+These files explain the final version of the project:
+
+- `FINAL_PROJECT_DOCUMENTATION_ZH_TW.tex`
+- `FINAL_PROJECT_REFERENCES.bib`
+- `FINAL_PROJECT_DOCUMENTATION_ZH_TW.pdf`
+
+They are for report and presentation use, not for running the system itself.
+
+## Running Requirements
+
+### Python application
 
 - Python 3
-- No third-party libraries
+- No third-party Python libraries
 
-The project uses only the standard library, mainly:
+The messaging system uses only the standard library, mainly:
 
 - `socket`
 - `threading`
 - `json`
 - `os`
 - `tkinter`
+- `base64`
+- `hashlib`
+- `time`
+- `zlib`
+
+### Optional document build tools
+
+If you want to rebuild the final PDF documentation, the LaTeX files were prepared for:
+
+- `pdfLaTeX`
+- `BibTeX`
 
 ## Configuration
 
@@ -177,6 +239,8 @@ SERVER_HOST = "0.0.0.0"
 CLIENT_HOST = "127.0.0.1"
 PORT = 12345
 BUFFER_SIZE = 1024
+TRANSFER_CHUNK_SIZE = 700
+COMPRESSION_THRESHOLD = 256
 ```
 
 If you want to connect from another computer on the same network:
@@ -219,6 +283,7 @@ You can open multiple clients at the same time to test communication between dif
 - Multi-line message input ends when the user enters two blank lines in a row.
 - File sending checks `text_files/` first, then the project root.
 - Inbox items are selected by number.
+- The terminal client keeps the original simple `SEND_FILE` request path.
 
 ### GUI client
 
@@ -227,13 +292,15 @@ You can open multiple clients at the same time to test communication between dif
 - After successful registration, the GUI shows a message box and asks the user to log in again.
 - The top `Refresh` button reloads both the friend list and inbox.
 - The inbox opens items by double-click.
-- The inbox keeps a single full-width `Delete` button under the list.
+- The file tab supports only `.txt` files.
+- The file tab shows transfer information, percentage, and a progress bar.
+- The GUI file workflow uses chunked transfer with optional compression.
 
 ## Actual Protocol Summary
 
 The running implementation uses a simple line-based request and response protocol.
 
-Examples:
+Examples of the original command style:
 
 ```text
 LOGIN|jimmy|1234
@@ -251,80 +318,57 @@ DELETE_ITEM|jimmy|1
 LOGOUT
 ```
 
+Examples of the newer GUI transfer path:
+
+```text
+TRANSFER_START|jimmy|mary|file|jimmy_1776238528767|sample3.txt|5|1|checksum_value
+TRANSFER_CHUNK|jimmy|jimmy_1776238528767|file|1|5|chunk_data
+TRANSFER_CHUNK|jimmy|jimmy_1776238528767|file|2|5|chunk_data
+```
+
 Server responses follow the same simple style:
 
 ```text
 OK|LOGIN|Welcome, jimmy
 ERROR|LOGIN|Invalid user ID or password
+OK|TRANSFER_START|Ready to receive 5 chunk(s)
+OK|TRANSFER_CHUNK|Chunk 1 of 5 received
+OK|TRANSFER_CHUNK|File sent successfully
 ```
 
-For multi-line messages and file content, special characters are escaped before sending and restored after receiving.
+## How the Enhanced File Transfer Works
 
-## Data Design
+The newer GUI file transfer workflow is:
 
-Top-level structure of `data/server_data.json`:
+1. read the text file
+2. convert it into UTF-8 bytes
+3. compress it with `zlib` if it reaches the configured threshold
+4. calculate a SHA-256 checksum on the transferred bytes
+5. Base64-encode the payload into text
+6. split the encoded text into chunks
+7. send `TRANSFER_START`
+8. send `TRANSFER_CHUNK` messages one by one
+9. let the server reassemble the chunks
+10. verify the checksum
+11. decompress if needed
+12. save the final normal file content in the inbox
 
-```json
-{
-    "friends": {},
-    "messages": {},
-    "files": {}
-}
+This design keeps the saved JSON data simple while still demonstrating application-layer protocol enhancement.
+
+## Notes About Current Repository State
+
+- `server_data.json` is currently cleared for a clean demo start.
+- The GUI is the main demonstration client for the final version.
+- The CLI client remains available and compatible with the simpler workflow.
+- The root LaTeX and PDF files are documentation outputs, not required for runtime.
+
+## Optional LaTeX Build Commands
+
+If you want to rebuild the Chinese final documentation PDF:
+
+```bash
+pdflatex -interaction=nonstopmode FINAL_PROJECT_DOCUMENTATION_ZH_TW.tex
+bibtex FINAL_PROJECT_DOCUMENTATION_ZH_TW
+pdflatex -interaction=nonstopmode FINAL_PROJECT_DOCUMENTATION_ZH_TW.tex
+pdflatex -interaction=nonstopmode FINAL_PROJECT_DOCUMENTATION_ZH_TW.tex
 ```
-
-### Friend lists
-
-- friend relationships are stored per user as simple lists
-- adding a friend is one-directional in the current implementation
-
-### Message box
-
-The `messages` section can contain:
-
-- normal messages
-- broadcasts
-- acknowledgements
-
-### File box
-
-The `files` section contains file items with fields such as:
-
-- `type`
-- `sender`
-- `recipients`
-- `file_name`
-- `content`
-
-### Inbox order
-
-Inbox display is assembled dynamically:
-
-1. all message-box items first
-2. all file-box items after that
-
-## Acknowledgement Rules
-
-The server automatically creates acknowledgements when:
-
-- a normal message is read
-- a file is read
-
-The server does not create another acknowledgement when:
-
-- a broadcast is read
-- an acknowledgement is read
-- the item was already acknowledged before
-
-## Important Notes
-
-- The project has both a terminal client and a GUI client.
-- Registration is already implemented and persists new users.
-- The server rewrites `server_data.json` on startup to ensure all users have `friends`, `messages`, and `files` entries.
-- There is no automated test suite in the repository at the moment.
-- The Word protocol document should be treated as reference material, not as the exact live protocol contract.
-
-## Authors
-
-- Li Haolin 11536573
-- Lam Chun Kit 11540512
-- Liu Chenghao 11536559
