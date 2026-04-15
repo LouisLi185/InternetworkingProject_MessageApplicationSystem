@@ -16,6 +16,11 @@ CLIENT_HOST = "127.0.0.1"
 PORT = 12345
 BUFFER_SIZE = 1024
 
+# Use simple settings for the file transfer enhancement.
+# Large payloads can be compressed before chunk sending.
+TRANSFER_CHUNK_SIZE = 700
+COMPRESSION_THRESHOLD = 256
+
 # Build file paths from the project base folder.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_USERS_FILE = os.path.join(BASE_DIR, "data", "default_users.json")

@@ -37,6 +37,9 @@ class GuiClientApp:
         self.message_recipients_var = tk.StringVar()
         self.file_recipients_var = tk.StringVar()
         self.file_path_var = tk.StringVar()
+        self.transfer_info_text = tk.StringVar(value="Transfer ready.")
+        self.transfer_percent_text = tk.StringVar(value="0%")
+        self.transfer_progress_value = tk.DoubleVar(value=0)
 
         self.build_window()
         self.show_login_frame()
@@ -397,11 +400,31 @@ class GuiClientApp:
         )
         info_label.grid(row=3, column=0, columnspan=2, sticky="w", pady=(4, 12))
 
+        transfer_frame = ttk.Frame(tab)
+        transfer_frame.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(0, 12))
+        transfer_frame.columnconfigure(0, weight=1)
+
+        ttk.Label(
+            transfer_frame,
+            textvariable=self.transfer_info_text
+        ).grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            transfer_frame,
+            textvariable=self.transfer_percent_text
+        ).grid(row=0, column=1, sticky="e", padx=(8, 0))
+
+        self.transfer_progressbar = ttk.Progressbar(
+            transfer_frame,
+            maximum=100,
+            variable=self.transfer_progress_value
+        )
+        self.transfer_progressbar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+
         ttk.Button(
             tab,
             text="Send File",
             command=self.send_file
-        ).grid(row=4, column=1, sticky="e")
+        ).grid(row=5, column=1, sticky="e")
 
         notebook.add(tab, text="Send File")
 
@@ -681,6 +704,7 @@ class GuiClientApp:
         self.message_text.delete("1.0", tk.END)
         self.broadcast_text.delete("1.0", tk.END)
         self.show_inbox_content("")
+        self.reset_transfer_display()
 
     # Get selected friend IDs from the friend list box.
     def get_selected_friend_ids(self):
@@ -924,6 +948,114 @@ class GuiClientApp:
 
         return os.path.basename(file_path), file_content, ""
 
+    # Reset the small file transfer display back to the normal ready state.
+    def reset_transfer_display(self):
+        self.transfer_progress_value.set(0)
+        self.transfer_percent_text.set("0%")
+        self.transfer_info_text.set("Transfer ready.")
+
+    # Update the file transfer progress and show one short progress message.
+    def update_transfer_display(self, percent, info_text):
+        self.transfer_progress_value.set(percent)
+        self.transfer_percent_text.set(str(int(percent)) + "%")
+        self.transfer_info_text.set(info_text)
+        self.root.update_idletasks()
+
+    # Build one short text about whether compression is used.
+    def build_transfer_summary_text(self, transfer_data):
+        if transfer_data["compressed"]:
+            return (
+                "Compression on. "
+                + str(transfer_data["original_size"])
+                + " bytes -> "
+                + str(transfer_data["transfer_size"])
+                + " bytes, "
+                + str(transfer_data["total_chunks"])
+                + " chunk(s)."
+            )
+
+        return (
+            "Compression off. "
+            + str(transfer_data["transfer_size"])
+            + " bytes, "
+            + str(transfer_data["total_chunks"])
+            + " chunk(s)."
+        )
+
+    # Send one text file in small chunks so the GUI can show progress clearly.
+    def send_chunked_file(self, recipient_list, file_name, file_content):
+        transfer_id = protocol.build_transfer_id(self.current_user_id)
+
+        self.update_transfer_display(0, "Preparing file payload...")
+        self.set_status("Preparing file payload...")
+        transfer_data = protocol.prepare_transfer_payload(file_content)
+
+        summary_text = self.build_transfer_summary_text(transfer_data)
+        self.update_transfer_display(0, summary_text)
+        self.set_status(summary_text)
+
+        start_request = protocol.build_transfer_start_request(
+            self.current_user_id,
+            recipient_list,
+            "file",
+            transfer_id,
+            file_name,
+            transfer_data["total_chunks"],
+            transfer_data["compressed"],
+            transfer_data["checksum"]
+        )
+        start_reply = self.safe_send_command(start_request)
+        start_ok, start_message = self.parse_simple_reply(start_reply, "TRANSFER_START")
+
+        if not start_ok:
+            self.update_transfer_display(0, "Transfer start failed.")
+            return False, start_message
+
+        total_chunks = transfer_data["total_chunks"]
+
+        for i in range(total_chunks):
+            chunk_index = i + 1
+            percent_before = (i * 100) / total_chunks
+
+            self.update_transfer_display(
+                percent_before,
+                "Sending chunk " + str(chunk_index) + " of " + str(total_chunks) + "..."
+            )
+
+            chunk_request = protocol.build_transfer_chunk_request(
+                self.current_user_id,
+                transfer_id,
+                "file",
+                chunk_index,
+                total_chunks,
+                transfer_data["chunk_list"][i]
+            )
+            chunk_reply = self.safe_send_command(chunk_request)
+            chunk_ok, chunk_message = self.parse_simple_reply(
+                chunk_reply,
+                "TRANSFER_CHUNK"
+            )
+
+            if not chunk_ok:
+                self.update_transfer_display(
+                    percent_before,
+                    "Transfer stopped at chunk " + str(chunk_index) + "."
+                )
+                return False, chunk_message
+
+            percent_after = (chunk_index * 100) / total_chunks
+
+            if chunk_index < total_chunks:
+                self.update_transfer_display(
+                    percent_after,
+                    "Chunk " + str(chunk_index) + " of " + str(total_chunks) + " sent."
+                )
+            else:
+                self.update_transfer_display(100, "Verifying integrity and finishing...")
+
+        self.update_transfer_display(100, "Transfer completed successfully.")
+        return True, chunk_message + " " + summary_text
+
     # Send one text file to one or more friends.
     def send_file(self):
         if self.current_user_id == "":
@@ -932,6 +1064,7 @@ class GuiClientApp:
         recipient_list = self.parse_recipient_text(self.file_recipients_var.get())
 
         if len(recipient_list) == 0:
+            self.reset_transfer_display()
             self.set_status("Please enter at least one receiver.")
             return
 
@@ -940,17 +1073,15 @@ class GuiClientApp:
         )
 
         if error_message != "":
+            self.reset_transfer_display()
             self.set_status(error_message)
             return
 
-        request = protocol.build_send_file_request(
-            self.current_user_id,
+        send_ok, send_message_text = self.send_chunked_file(
             recipient_list,
             file_name,
             file_content
         )
-        reply = self.safe_send_command(request)
-        send_ok, send_message_text = self.parse_simple_reply(reply, "SEND_FILE")
 
         if send_ok:
             self.file_path_var.set("")

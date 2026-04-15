@@ -2,6 +2,14 @@
 # between the client and the server.
 # Most requests and replies use "|" as the separator.
 
+import base64
+import hashlib
+import time
+import zlib
+
+import config
+
+
 """---- Login Protocol ----"""
 # LOGIN request:
 # LOGIN|user_id|password
@@ -199,6 +207,209 @@ def parse_send_file_request(message):
     file_name = restore_special_text(parts[3])
     file_content = restore_special_text(parts[4])
     return user_id, recipient_list, file_name, file_content
+
+
+"""---- Chunked Transfer Protocol ----"""
+# Build one simple transfer ID from user ID and current time.
+def build_transfer_id(user_id):
+    return user_id + "_" + str(int(time.time() * 1000))
+
+
+# Calculate one simple SHA-256 checksum.
+def build_payload_checksum(payload_bytes):
+    return hashlib.sha256(payload_bytes).hexdigest()
+
+
+# Split one long text into smaller transfer chunks.
+def split_text_into_chunks(text, chunk_size):
+    chunk_list = []
+    index = 0
+
+    while index < len(text):
+        chunk_list.append(text[index:index + chunk_size])
+        index = index + chunk_size
+
+    if len(chunk_list) == 0:
+        chunk_list.append("")
+
+    return chunk_list
+
+
+# Prepare one text payload before chunk sending.
+# Large payloads can be compressed first.
+def prepare_transfer_payload(payload_text):
+    original_bytes = payload_text.encode("utf-8")
+    compressed = False
+    transfer_bytes = original_bytes
+
+    if len(original_bytes) >= config.COMPRESSION_THRESHOLD:
+        transfer_bytes = zlib.compress(original_bytes)
+        compressed = True
+
+    checksum = build_payload_checksum(transfer_bytes)
+    encoded_payload = base64.b64encode(transfer_bytes).decode("ascii")
+    chunk_list = split_text_into_chunks(encoded_payload, config.TRANSFER_CHUNK_SIZE)
+
+    return {
+        "chunk_list": chunk_list,
+        "total_chunks": len(chunk_list),
+        "compressed": compressed,
+        "checksum": checksum,
+        "original_size": len(original_bytes),
+        "transfer_size": len(transfer_bytes)
+    }
+
+
+# Restore one payload after all chunks arrive at the receiver.
+def restore_transfer_payload(encoded_payload, compressed, checksum):
+    try:
+        transfer_bytes = base64.b64decode(encoded_payload.encode("ascii"), validate=True)
+    except:
+        return None, "Transfer data is not valid"
+
+    if build_payload_checksum(transfer_bytes) != checksum:
+        return None, "Integrity check failed"
+
+    if compressed:
+        try:
+            payload_bytes = zlib.decompress(transfer_bytes)
+        except:
+            return None, "Compressed data cannot be restored"
+    else:
+        payload_bytes = transfer_bytes
+
+    try:
+        payload_text = payload_bytes.decode("utf-8")
+    except:
+        return None, "Transfer data is not valid text"
+
+    return payload_text, ""
+
+
+# TRANSFER_START request:
+# TRANSFER_START|sender|friend1,friend2|payload_type|transfer_id|file_name|total_chunks|compressed|checksum
+def build_transfer_start_request(
+    user_id,
+    recipient_list,
+    payload_type,
+    transfer_id,
+    file_name,
+    total_chunks,
+    compressed,
+    checksum
+):
+    recipients_text = ",".join(recipient_list)
+    safe_payload_type = change_special_text(payload_type)
+    safe_file_name = change_special_text(file_name)
+    compressed_text = "1"
+
+    if not compressed:
+        compressed_text = "0"
+
+    return (
+        "TRANSFER_START|"
+        + user_id
+        + "|"
+        + recipients_text
+        + "|"
+        + safe_payload_type
+        + "|"
+        + transfer_id
+        + "|"
+        + safe_file_name
+        + "|"
+        + str(total_chunks)
+        + "|"
+        + compressed_text
+        + "|"
+        + checksum
+    )
+
+
+# Parse the TRANSFER_START request.
+def parse_transfer_start_request(message):
+    parts = message.strip().split("|", 8)
+
+    if len(parts) != 9 or parts[0] != "TRANSFER_START":
+        return None
+
+    if parts[2] == "":
+        recipient_list = []
+    else:
+        recipient_list = parts[2].split(",")
+
+    try:
+        total_chunks = int(parts[6])
+    except:
+        return None
+
+    if parts[7] == "1":
+        compressed = True
+    elif parts[7] == "0":
+        compressed = False
+    else:
+        return None
+
+    return (
+        parts[1],
+        recipient_list,
+        restore_special_text(parts[3]),
+        parts[4],
+        restore_special_text(parts[5]),
+        total_chunks,
+        compressed,
+        parts[8]
+    )
+
+
+# TRANSFER_CHUNK request:
+# TRANSFER_CHUNK|sender|transfer_id|payload_type|chunk_index|total_chunks|chunk_data
+def build_transfer_chunk_request(
+    user_id,
+    transfer_id,
+    payload_type,
+    chunk_index,
+    total_chunks,
+    chunk_data
+):
+    safe_payload_type = change_special_text(payload_type)
+    return (
+        "TRANSFER_CHUNK|"
+        + user_id
+        + "|"
+        + transfer_id
+        + "|"
+        + safe_payload_type
+        + "|"
+        + str(chunk_index)
+        + "|"
+        + str(total_chunks)
+        + "|"
+        + chunk_data
+    )
+
+
+# Parse the TRANSFER_CHUNK request.
+def parse_transfer_chunk_request(message):
+    parts = message.strip().split("|", 6)
+
+    if len(parts) != 7 or parts[0] != "TRANSFER_CHUNK":
+        return None
+
+    try:
+        chunk_index = int(parts[4])
+        total_chunks = int(parts[5])
+    except:
+        return None
+
+    return (
+        parts[1],
+        parts[2],
+        restore_special_text(parts[3]),
+        chunk_index,
+        total_chunks,
+        parts[6]
+    )
 
 
 """---- Inbox Protocol ----"""
