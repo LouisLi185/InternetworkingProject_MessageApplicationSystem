@@ -70,6 +70,8 @@
 \begin{document}
 	
 	\maketitle
+	\thispagestyle{plain}
+	\pagestyle{plain}
 
 \begin{abstract}
 	This paper presents the design and implementation of a TCP socket-based multi-user messaging system in Python. The system follows a client-server architecture and supports the core functions of a message application, including authentication, friend list management, direct and broadcast messaging, text-file delivery, inbox operations, and acknowledgement generation. Server-side data, including user records, friend lists, messages, and files, are persistently maintained in JSON format, while communication is handled through a lightweight custom application-layer protocol.
