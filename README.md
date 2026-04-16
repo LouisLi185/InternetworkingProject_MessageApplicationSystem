@@ -1,38 +1,58 @@
 # Message Application System
 
-This project is a socket-based messaging system written in Python for the INT3069 group project. It uses a central TCP server, JSON files for persistence, a simple line-based application protocol, and two client interfaces:
+This project is a Python TCP socket messaging system built for the INT3069 group project. It uses a central threaded server, JSON files for persistence, a simple line-based application protocol, and two clients:
 
-- a terminal client in `src/client.py`
-- a Tkinter GUI client in `src/gui_client.py`
+- `src/client.py`: menu-driven CLI client
+- `src/gui_client.py`: Tkinter GUI client
 
-The current version keeps the original beginner-friendly project style and adds two practical networking enhancements for the GUI file workflow:
+The final version keeps the original beginner-friendly structure while adding practical improvements for demonstration:
 
-- chunked transfer with integrity checking
-- compression for larger text file payloads
+- user registration
+- online or offline friend status
+- a GUI client with reconnect support
+- chunked file transfer in the GUI client
+- optional compression for larger text payloads
+- SHA-256 integrity verification
+- progress feedback during GUI file transfer
 
-## Current Features
+## Authors
 
-- Login with predefined accounts from `data/default_users.json`
-- Register a new account and persist it to `data/default_users.json`
-- View friend list with online or offline status
-- Add a friend
-- Delete a friend
-- Send direct messages to one or more friends
-- Send broadcast messages to all current friends
-- Send `.txt` files to one or more friends
-- View inbox items
-- Read inbox items
-- Delete inbox items
-- Automatically generate acknowledgements when a normal message or file is read
-- GUI file transfer progress display
-- Chunked file transfer in the GUI client
-- Compression for larger file payloads
-- SHA-256 integrity verification after transfer reassembly
+- Li Haolin 11536573
+- Lam Chun Kit 11546512
+- Liu Chenghao 11536559
 
-## Current Project Structure
+## What the System Supports
+
+- login and logout
+- register a new account
+- view friend list
+- view friend online or offline status
+- add a friend
+- delete a friend
+- send a direct message to one or more friends
+- broadcast a message to all current friends
+- send `.txt` files to one or more friends
+- list inbox items
+- read inbox items
+- delete inbox items
+- automatically generate read acknowledgements for direct messages and files
+
+## Current Project Layout
 
 ```text
 INT3069_GroupProject/
+├── README.md
+├── data/
+│   ├── default_users.json
+│   └── server_data.json
+├── docs/
+│   ├── INT3069_GroupProject_Report.pdf
+│   ├── INT3069_GroupProject_Report.tex
+│   ├── references.bib
+│   └── figures/
+│       ├── .gitkeep
+│       ├── gui_login.png
+│       └── gui_main.png
 ├── src/
 │   ├── client.py
 │   ├── config.py
@@ -40,199 +60,153 @@ INT3069_GroupProject/
 │   ├── protocol.py
 │   ├── server.py
 │   └── storage.py
-├── data/
-│   ├── default_users.json
-│   └── server_data.json
-├── docs/
-│   └── Protocol_Specification.docx
 ├── text_files/
 │   ├── sample1.txt
 │   ├── sample2.txt
 │   └── sample3.txt
-├── FINAL_PROJECT_DOCUMENTATION_ZH_TW.tex
-├── FINAL_PROJECT_REFERENCES.bib
-├── FINAL_PROJECT_DOCUMENTATION_ZH_TW.pdf
-└── README.md
+└── video/
+    └── .gitkeep
 ```
 
 ## File Overview
 
-### `src/server.py`
+### Runtime source files
 
-The server:
+`src/config.py`
 
-- accepts TCP connections
+- stores host, port, buffer size, chunk size, compression threshold, and data file paths
+
+`src/protocol.py`
+
+- defines the plain-text request and response protocol
+- escapes and restores message or file text
+- builds and parses both the original commands and the chunked transfer commands
+- handles Base64 conversion, checksum creation, compression preparation, and payload restoration
+
+`src/storage.py`
+
+- reads and writes `data/default_users.json`
+- reads and writes `data/server_data.json`
+- prepares empty storage for users
+- stores friend lists, messages, files, inbox summaries, and acknowledgements
+
+`src/server.py`
+
+- listens for TCP connections
 - handles one client per thread
-- validates login and registration
-- manages friend lists
-- delivers messages, broadcasts, and files
-- lists, reads, and deletes inbox items
-- tracks online users for friend status display
-- supports both the old `SEND_FILE` path and the newer chunked transfer path
-- reassembles incoming transfer chunks
-- verifies SHA-256 integrity checks
-- decompresses transferred data when needed
-- writes persistent changes to `data/server_data.json`
+- validates login, registration, and command ownership
+- manages online user counts for presence display
+- stores messages and files
+- rebuilds chunked GUI file transfers before saving them
 
-### `src/client.py`
+`src/client.py`
 
-The terminal client:
+- provides the CLI workflow
+- uses menu-based interaction
+- supports multiline message input
+- keeps the older simple `SEND_FILE` path
+- reads files from `text_files/` first, then from the project root
 
-- shows text menus
-- sends protocol requests to the server
-- supports login and registration
-- supports multi-line message input
-- supports file sending from `text_files/` or the project root
-- shows inbox items in a boxed terminal layout
+`src/gui_client.py`
 
-The terminal client keeps the original simple file-sending path and does not use the GUI progress-bar workflow.
+- provides the Tkinter GUI workflow
+- supports login, register, reconnect, logout, refresh, messaging, broadcast, file transfer, and inbox viewing
+- uses the newer chunked transfer path for files
+- shows transfer summary text, percentage, and a progress bar
 
-### `src/gui_client.py`
+### Data files
 
-The GUI client:
+`data/default_users.json`
 
-- provides a Tkinter desktop interface
-- supports login, registration, reconnect, and logout
-- shows friend status in a left-side list
-- supports message, broadcast, file, and inbox workflows in tabs
-- uses one top `Refresh` button to reload both friend list and inbox
-- opens inbox items by double-click
-- keeps a simple inbox layout with one `Delete` button under the list
-- sends files through the newer chunked transfer workflow
-- shows a small transfer info label, percentage text, and progress bar for file sending
+- stores user IDs and passwords
+- currently contains 10 default accounts:
+  - `jimmy`
+  - `mary`
+  - `peter`
+  - `david`
+  - `john`
+  - `george`
+  - `alice`
+  - `bob`
+  - `tom`
+  - `jane`
+- all default passwords are `1234`
+- newly registered users are also written here
 
-### `src/protocol.py`
+`data/server_data.json`
 
-This file defines the actual protocol used by the running system:
+- stores three top-level sections:
+  - `friends`
+  - `messages`
+  - `files`
+- the current repository copy is reset to a clean demo state with empty lists for the default users
 
-- plain text
-- one request or response per line
-- `|` as the main field separator
-- escaped special characters for multi-line text and file content
-- helper functions for chunked transfer
-- helper functions for compression and decompression
-- helper functions for SHA-256 checksums
+### Sample files
 
-It includes both:
+`text_files/sample1.txt`
 
-- the original command builders such as `LOGIN`, `SEND_MESSAGE`, `SEND_FILE`
-- the newer transfer commands `TRANSFER_START` and `TRANSFER_CHUNK`
+- a short single-line sample file
 
-### `src/storage.py`
+`text_files/sample2.txt`
 
-This file handles:
+- a multiline sample text file
 
-- reading and writing JSON data
-- preparing empty server data for users
-- friend storage
-- message storage
-- file storage
-- inbox listing and deletion
-- acknowledgement creation
+`text_files/sample3.txt`
 
-The storage format is intentionally kept simple. Chunking and compression happen only during transfer, not in the saved JSON structure.
+- a much larger text file for chunking, compression, and progress-bar demos
 
-### `src/config.py`
+### Documentation files
 
-This file stores:
+`docs/INT3069_GroupProject_Report.tex`
 
-- server host
-- client host
-- port
-- buffer size
-- transfer chunk size
-- compression threshold
-- JSON file paths
+- the tracked English report source for the current project write-up
 
-Current transfer-related settings:
+`docs/INT3069_GroupProject_Report.pdf`
 
-```python
-TRANSFER_CHUNK_SIZE = 700
-COMPRESSION_THRESHOLD = 256
-```
+- the compiled report PDF
 
-### `data/default_users.json`
+`docs/references.bib`
 
-This file stores login accounts. The project currently starts with 10 default users:
+- BibTeX references used by the tracked report
 
-- `jimmy`
-- `mary`
-- `peter`
-- `david`
-- `john`
-- `george`
-- `alice`
-- `bob`
-- `tom`
-- `jane`
+`docs/figures/gui_login.png`
+`docs/figures/gui_main.png`
 
-All 10 default users use password `1234`.
+- screenshots used in the report
 
-Newly registered users are also written into this file.
+`video/.gitkeep`
 
-### `data/server_data.json`
+- placeholder so the `video/` directory exists in the repository
 
-This file stores:
+## Requirements
 
-- `friends`
-- `messages`
-- `files`
-
-The current repository data has been reset to a clean demo state for the 10 default users, with empty friend lists and empty inbox data.
-
-### `text_files/`
-
-This folder contains sample `.txt` files for file-sending tests:
-
-- `sample1.txt`: short single-line text
-- `sample2.txt`: short multi-line text
-- `sample3.txt`: large text file for bigger transfer tests, chunking tests, and compression demos
-
-### `docs/Protocol_Specification.docx`
-
-This file is a course documentation artifact. It is not an exact description of the current implementation.
-
-The document describes a JSON and token-based protocol, while the actual code in `src/` uses a plain-text line protocol with `|` separators and does not use session tokens.
-
-### Root documentation files
-
-These files explain the final version of the project:
-
-- `FINAL_PROJECT_DOCUMENTATION_ZH_TW.tex`
-- `FINAL_PROJECT_REFERENCES.bib`
-- `FINAL_PROJECT_DOCUMENTATION_ZH_TW.pdf`
-
-They are for report and presentation use, not for running the system itself.
-
-## Running Requirements
-
-### Python application
+### Python runtime
 
 - Python 3
-- No third-party Python libraries
+- no third-party Python packages
 
-The messaging system uses only the standard library, mainly:
+The implementation uses only standard library modules, mainly:
 
 - `socket`
 - `threading`
 - `json`
 - `os`
-- `tkinter`
+- `time`
 - `base64`
 - `hashlib`
-- `time`
 - `zlib`
+- `tkinter`
 
-### Optional document build tools
+### Optional document tools
 
-If you want to rebuild the final PDF documentation, the LaTeX files were prepared for:
+If you want to rebuild the tracked report in `docs/`, you will need:
 
-- `pdfLaTeX`
-- `BibTeX`
+- `pdflatex`
+- `bibtex`
 
 ## Configuration
 
-Default connection settings are defined in `src/config.py`:
+Default network and transfer settings are defined in `src/config.py`:
 
 ```python
 SERVER_HOST = "0.0.0.0"
@@ -243,10 +217,17 @@ TRANSFER_CHUNK_SIZE = 700
 COMPRESSION_THRESHOLD = 256
 ```
 
-If you want to connect from another computer on the same network:
+Meaning:
 
-1. keep `SERVER_HOST = "0.0.0.0"` on the server machine
-2. change `CLIENT_HOST` on the client machine to the server machine's IP address
+- `SERVER_HOST = "0.0.0.0"` lets the server accept connections from other machines
+- `CLIENT_HOST = "127.0.0.1"` points clients to the same computer by default
+- files at or above `256` bytes are compressed before GUI chunk transfer
+- the Base64 payload is split into chunks of up to `700` characters
+
+If you want to test across different computers on the same network:
+
+1. keep `SERVER_HOST = "0.0.0.0"` on the machine running the server
+2. change `CLIENT_HOST` in `src/config.py` on the client machine to the server machine's IP address
 3. make sure the selected port is open and unused
 
 ## How to Run
@@ -259,9 +240,9 @@ Open the project folder in separate terminals.
 python3 src/server.py
 ```
 
-### 2. Start one client
+### 2. Start a client
 
-Terminal client:
+CLI client:
 
 ```bash
 python3 src/client.py
@@ -275,32 +256,79 @@ python3 src/gui_client.py
 
 You can open multiple clients at the same time to test communication between different users.
 
-## Usage Notes
+## Recommended Demo Flow
 
-### Terminal client
+The GUI client is the best way to demonstrate the final version.
 
-- Login and registration are handled from the terminal menu.
-- Multi-line message input ends when the user enters two blank lines in a row.
-- File sending checks `text_files/` first, then the project root.
-- Inbox items are selected by number.
-- The terminal client keeps the original simple `SEND_FILE` request path.
+1. Start `src/server.py`.
+2. Open two GUI clients.
+3. Log in as two different users.
+4. Add friends as needed.
+5. Click `Refresh` to reload friend status and inbox state.
+6. Send a normal message.
+7. Send a broadcast message.
+8. Send `text_files/sample1.txt`.
+9. Send `text_files/sample3.txt` to demonstrate chunking and compression.
+10. Read the received inbox items and check the acknowledgement behavior.
+
+## Client Behavior Notes
+
+### CLI client
+
+- login, registration, logout, friend management, messaging, file sending, and inbox operations are all menu-driven
+- multiline message input ends when the user enters two blank lines in a row
+- file sending accepts only `.txt` files
+- file lookup checks `text_files/` first, then the project root
+- inbox items are selected by number
+- the CLI client still uses the simple `SEND_FILE` request path
 
 ### GUI client
 
-- The login screen supports `Login`, `Register`, and `Reconnect`.
-- Login-screen errors are shown in dark red.
-- After successful registration, the GUI shows a message box and asks the user to log in again.
-- The top `Refresh` button reloads both the friend list and inbox.
-- The inbox opens items by double-click.
-- The file tab supports only `.txt` files.
-- The file tab shows transfer information, percentage, and a progress bar.
-- The GUI file workflow uses chunked transfer with optional compression.
+- the login view supports `Login`, `Register`, and `Reconnect`
+- the top bar shows current user, user status, and connection state
+- the `Refresh` button reloads both friend list and inbox
+- friend list selection can be copied into message or file receiver fields with `Use Selected Friends`
+- the file tab accepts only `.txt` files
+- the GUI file path can be typed manually or selected with a file chooser
+- inbox items are opened by double-click
+- file sending shows a transfer summary, percentage, and progress bar
+- reconnect drops the old local session and returns to the login screen
+
+## Data Model and Rules
+
+### Friend relationships
+
+- friendship is one-way in the current implementation
+- if `A` adds `B`, `B` is not automatically added back to `A`
+
+### Inbox ordering
+
+- inbox entries are built from saved messages first and files second
+- acknowledgements are stored inside the message box
+
+### Read acknowledgements
+
+- reading a direct message creates an acknowledgement for the original sender
+- reading a file creates an acknowledgement for the original sender
+- broadcast items do not create acknowledgements
+- acknowledgement items do not create more acknowledgements
+
+### Broadcast behavior
+
+- broadcast does not send to every account in the system
+- it sends to all friends currently listed under the sender
 
 ## Actual Protocol Summary
 
-The running implementation uses a simple line-based request and response protocol.
+The running implementation uses a simple plain-text protocol over TCP. Each request or response is one line, and most fields are separated by `|`.
 
-Examples of the original command style:
+Message and file text are escaped before sending so the protocol can safely carry:
+
+- `|`
+- `\`
+- newlines
+
+### Core request examples
 
 ```text
 LOGIN|jimmy|1234
@@ -318,7 +346,7 @@ DELETE_ITEM|jimmy|1
 LOGOUT
 ```
 
-Examples of the newer GUI transfer path:
+### Chunked GUI file-transfer requests
 
 ```text
 TRANSFER_START|jimmy|mary|file|jimmy_1776238528767|sample3.txt|5|1|checksum_value
@@ -326,7 +354,7 @@ TRANSFER_CHUNK|jimmy|jimmy_1776238528767|file|1|5|chunk_data
 TRANSFER_CHUNK|jimmy|jimmy_1776238528767|file|2|5|chunk_data
 ```
 
-Server responses follow the same simple style:
+### Response examples
 
 ```text
 OK|LOGIN|Welcome, jimmy
@@ -336,39 +364,23 @@ OK|TRANSFER_CHUNK|Chunk 1 of 5 received
 OK|TRANSFER_CHUNK|File sent successfully
 ```
 
-## How the Enhanced File Transfer Works
+## How the Enhanced GUI File Transfer Works
 
-The newer GUI file transfer workflow is:
+The GUI file workflow is:
 
-1. read the text file
-2. convert it into UTF-8 bytes
+1. read a local text file
+2. encode the content as UTF-8 bytes
 3. compress it with `zlib` if it reaches the configured threshold
-4. calculate a SHA-256 checksum on the transferred bytes
-5. Base64-encode the payload into text
-6. split the encoded text into chunks
+4. calculate a SHA-256 checksum on the transfer bytes
+5. Base64-encode the transfer payload
+6. split the Base64 text into chunks
 7. send `TRANSFER_START`
-8. send `TRANSFER_CHUNK` messages one by one
-9. let the server reassemble the chunks
+8. send `TRANSFER_CHUNK` requests one by one
+9. let the server reassemble the chunks in memory
 10. verify the checksum
 11. decompress if needed
-12. save the final normal file content in the inbox
+12. decode back to normal text
+13. save the final file content in the normal inbox storage format
 
-This design keeps the saved JSON data simple while still demonstrating application-layer protocol enhancement.
+This keeps the transport enhancement separate from the saved JSON structure.
 
-## Notes About Current Repository State
-
-- `server_data.json` is currently cleared for a clean demo start.
-- The GUI is the main demonstration client for the final version.
-- The CLI client remains available and compatible with the simpler workflow.
-- The root LaTeX and PDF files are documentation outputs, not required for runtime.
-
-## Optional LaTeX Build Commands
-
-If you want to rebuild the Chinese final documentation PDF:
-
-```bash
-pdflatex -interaction=nonstopmode FINAL_PROJECT_DOCUMENTATION_ZH_TW.tex
-bibtex FINAL_PROJECT_DOCUMENTATION_ZH_TW
-pdflatex -interaction=nonstopmode FINAL_PROJECT_DOCUMENTATION_ZH_TW.tex
-pdflatex -interaction=nonstopmode FINAL_PROJECT_DOCUMENTATION_ZH_TW.tex
-```
